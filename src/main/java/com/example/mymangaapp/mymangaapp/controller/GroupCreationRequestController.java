@@ -34,6 +34,21 @@ public class GroupCreationRequestController {
                 .build();
     }
 
+    @GetMapping("/users/me/creation-requests")
+    public ApiResponse<PaginatedResponse<CreationRequestResponse>> getMyCreationRequests(
+            @RequestParam(required = false) GroupCreationRequestStatus status,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "createdAt") String sortBy
+    ) {
+        PaginatedResponse<CreationRequestResponse> response = groupCreationRequestService
+                .getMyCreationRequests(status, page, size, sortBy);
+
+        return ApiResponse.<PaginatedResponse<CreationRequestResponse>>builder()
+                .result(response)
+                .build();
+    }
+
 
     // ----------------------------chức năng dành cho admin ---------------------------------
 

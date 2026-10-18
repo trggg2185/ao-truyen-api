@@ -30,6 +30,12 @@ public class MangaCreationRequest {
     @Size(max = 255, message = "AUTHORS_NAME_INVALID")
     String authorsName;
 
+    // Ảnh bìa truyện ko bắt buộc
+    // Nhưng frontend sẽ phải gọi endpoint upload lên tmp trước để lấy url
+    // sau mới có thể đính kèm vào request tạo truyện được
+    @Size(max = 500, message = "MANGA_COVER_IMAGE_INVALID")
+    String coverImageUrl;
+
     // khi tạo manga, có thể hay không kèm theo những nhóm tham gia dịch
     // ko có thì mặc định trong service luôn có nhóm của ng đang tạo truyện
     Set<String> transGroups;

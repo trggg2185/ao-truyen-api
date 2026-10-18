@@ -31,9 +31,9 @@ public interface UserMapper {
     @Mapping(target = "transGroups", ignore = true)
     @Mapping(target = "facebook", ignore = true)
     @Mapping(target = "discord", ignore = true)
+    @Mapping(target = "avatar", ignore = true)
     @Mapping(target = "bio", ignore = true)
     @Mapping(target = "password", ignore = true)
-    @Mapping(target = "avatar", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
     User toUser(UserCreationRequest request);
@@ -54,10 +54,10 @@ public interface UserMapper {
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "username", ignore = true)
     @Mapping(target = "password", ignore = true)
+    @Mapping(target = "avatar", ignore = true)
     @Mapping(target = "transGroup", ignore = true)
     @Mapping(target = "transGroups", ignore = true)
     @Mapping(target = "roles", ignore = true)
-    @Mapping(target = "avatar", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
     // Dùng NullValuePropertyMappingStrategy.IGNORE để nếu request field = null thì BỎ QUA không ghi đè

@@ -70,6 +70,23 @@ public class GroupCreationRequestService {
         );
     }
 
+    @Transactional(readOnly = true)
+    public PaginatedResponse<CreationRequestResponse> getMyCreationRequests(
+            GroupCreationRequestStatus status,
+            int page,
+            int size,
+            @NonNull String sortBy) {
+        String currentUserId = SecurityUtils.getCurrentUserId();
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, sortBy));
+        Page<CreationRequestResponse> dtoPage = status == null
+                ? groupCreationRequestRepository.findAllByCreatorId(currentUserId, pageable)
+                .map(groupCreationRequestMapper::toCreationRequestResponse)
+                : groupCreationRequestRepository.findAllByCreatorIdAndStatus(currentUserId, status, pageable)
+                .map(groupCreationRequestMapper::toCreationRequestResponse);
+
+        return PaginatedResponse.of(dtoPage);
+    }
+
 
     // ----------------------------------chức năng cho admin ----------------------------------------
 

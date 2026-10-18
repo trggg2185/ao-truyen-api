@@ -19,23 +19,14 @@ public interface TransGroupRepository extends JpaRepository<TransGroup, String> 
     @EntityGraph(attributePaths = { "leader", "members", "translatedMangas" })
     Optional<TransGroup> findWithDetailsById(String id);
 
-    // Khi gọi find all thì cố gắng load luôn leader và members để tránh lazy exception
-    // nếu không khi map sang transgroup response thì mapper tự động gọi
-    // getLeader và getMembers, khi jpa sẽ sinh sql nhưng session đã đóng
-    // từ khi gọi find all rồi nên bắn lazy ngay
-    @EntityGraph(attributePaths = { "leader", "members" })
     @NonNull
     Page<TransGroup> findAll(@NonNull Pageable pageable);
 
     // Hàm này để tìm group theo id đã đc fetch sẵn các dữ liệu như leader, roles, permissions và members
     // vì chúng là lazy và để tránh n + 1 query
     @EntityGraph(attributePaths = { "leader", "members" })
-    Optional<TransGroup> findWithLeaderAndMembersById(String id);
+    Optional<TransGroup> findWithLeaderAndMembersByIdAndStatus(String id, TransGroupStatus status);
 
-    @EntityGraph(attributePaths = { "leader", "members" })
-    Optional<TransGroup> findByIdAndStatus(String id, TransGroupStatus status);
-
-    @EntityGraph(attributePaths = { "leader", "members" })
     Optional<TransGroup> findByLeaderIdAndStatus(String leaderId, TransGroupStatus status);
 
     List<TransGroup> findAllByIdInAndStatus(Collection<String> id, TransGroupStatus status);

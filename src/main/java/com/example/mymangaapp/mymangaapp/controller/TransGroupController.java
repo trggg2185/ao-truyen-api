@@ -89,7 +89,7 @@ public class TransGroupController {
     @RateLimit(capacity = 10, limitType = LimitType.USER_ID)
     public ApiResponse<TransGroupResponse> updateGroupById(
             @PathVariable @NonNull String id,
-            @Valid @RequestBody TransGroupUpdateRequest request)
+            @Valid @ModelAttribute("transGroupUpdateRequest") TransGroupUpdateRequest request)
     {
         TransGroupResponse response = transGroupService.updateGroupById(id, request);
 

@@ -16,20 +16,19 @@ import org.springframework.web.servlet.HandlerExceptionResolver;
 
 import com.example.mymangaapp.mymangaapp.security.service.CustomUserDetailsService;
 import com.example.mymangaapp.mymangaapp.security.utils.JwtUtils;
+import org.slf4j.MDC;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.AccessLevel;
 import lombok.experimental.FieldDefaults;
-import lombok.extern.slf4j.Slf4j;
 
 // OncePerRequestFilter là 1 filer trong filter chain
 // Cứ mỗi http request đến là nó chạy 1 phát
 // Để phục vụ cho việc authenticate jwt token xem có hợp lệ không
 @Component
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
-@Slf4j
 // Dù là public endpoint vẫn đi qua filter này nhé
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
@@ -82,14 +81,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                             customUserDetails.getAuthorities() // Danh sách Role & Permission
                     );
 
-                    log.info(authenticationToken.getAuthorities().toString());
-
                     // Đính kèm thêm thông tin phụ (IP, SessionId...) từ Request
                     authenticationToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
 
                     // Nap authentiaction vao context
                     // request này chính thức đăng nhập thành công
                     SecurityContextHolder.getContext().setAuthentication(authenticationToken);
+                    //MDC.put("userId", customUserDetails.getId());
                 }
             }
 

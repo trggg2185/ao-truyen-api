@@ -32,7 +32,7 @@ public class MangaTransGroupService {
     public void leave(@NonNull String mangaId, @NonNull String groupId) {
 
         // check có đúng là manga do nhóm này dịch ko
-        if (mangaRepository.isMangaTranslatedByGroup(mangaId, groupId, TransGroupStatus.APPROVED)) {
+        if (!mangaRepository.isMangaTranslatedByGroup(mangaId, groupId, TransGroupStatus.APPROVED)) {
             throw new AppException(ResponseCode.UNAUTHORIZED);
         }
 

@@ -9,7 +9,6 @@ import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 import lombok.experimental.SuperBuilder;
-import lombok.extern.slf4j.Slf4j;
 
 @Getter
 @Setter
@@ -18,7 +17,6 @@ import lombok.extern.slf4j.Slf4j;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 @SuperBuilder
 @Entity
-@Slf4j
 public class TransGroup extends BaseEntity {
     
     @Id
@@ -46,6 +44,12 @@ public class TransGroup extends BaseEntity {
     @Column(length = 100, nullable = false)
     String slug;
 
+    @Column(length = 500)
+    String avatar;
+
+    @Column(length = 500)
+    String coverImageUrl;
+
     // chạy trc khi perist xuống db để tạo slug từ group name
     @PrePersist
     @PreUpdate
@@ -55,7 +59,6 @@ public class TransGroup extends BaseEntity {
         }
 
         this.slug = new Slugify().slugify(this.name);
-        log.info("Transgroup name: {} -> slug: {}", this.name, this.slug);
     }
 
     @Column(length = 300)

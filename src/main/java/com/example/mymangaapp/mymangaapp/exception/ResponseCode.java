@@ -78,6 +78,7 @@ public enum ResponseCode {
     TRANSGROUP_NAME_INVALID("3301", "Tên nhóm dịch ít nhất phải có {min} ký tự và tối đa {max} ký tự!", HttpStatus.BAD_REQUEST),
     TRANSGROUP_NAME_REQUIRED("3302", "Tên nhóm dịch không được để trống!", HttpStatus.BAD_REQUEST),
     TRANSGROUP_DESCRIPTION_INVALID("3303", "Mô tả nhóm dịch có tối đa {max} ký tự!", HttpStatus.BAD_REQUEST),
+    TRANSGROUP_COVER_IMAGE_INVALID("3304", "Ảnh bìa nhóm dịch có tối đa {max} ký tự!", HttpStatus.BAD_REQUEST),
 
     // --- Manga ---
     MANGA_NAME_INVALID("3401", "Tên truyện có tối đa {max} ký tự!", HttpStatus.BAD_REQUEST),
@@ -85,6 +86,7 @@ public enum ResponseCode {
     GENRES_REQUIRED("3403", "Thể loại truyện không được để trống!", HttpStatus.BAD_REQUEST),
     MANGA_STATUS_REQUIRED("3404", "Trạng thái truyện không được để trống!", HttpStatus.BAD_REQUEST),
     MANGA_DESCRIPTION_INVALID("3405", "Mô tả truyện có tối đa {max} ký tự!", HttpStatus.BAD_REQUEST),
+    MANGA_COVER_IMAGE_INVALID("3406", "Ảnh bìa truyện có tối đa {max} ký tự!", HttpStatus.BAD_REQUEST),
 
     // --- Chapter ---
     CHAPTER_INDEX_REQUIRED("3501", "Số chương không được để trống!", HttpStatus.BAD_REQUEST),

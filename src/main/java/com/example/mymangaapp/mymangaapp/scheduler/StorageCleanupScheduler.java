@@ -29,8 +29,6 @@ public class StorageCleanupScheduler {
     // 2 số 0 ở đầu nghĩa là chạy vào lúc 0 giây 0 phút của mọi giờ, mọi ngày
     @Scheduled(cron = "0 0 * * * *")
     public void cleanupTmpFiles() {
-        log.info("Dọn dẹp tmp r2.................");
-
         try {
             // lấy tg lúc 3 tiếng trc
             Instant thresholdTime = Instant.now().minus(TMP_THRESHOLD);
@@ -48,8 +46,6 @@ public class StorageCleanupScheduler {
     // nhưng bị lỗi trong qtrình copy
     @Scheduled(cron = "0 0 3 * * *")
     public void cleanupFailedUploadedFiles() {
-        log.info("Dọn dẹp mangas r2.................");
-
         // Chưa làm được, làm sau
     }
 

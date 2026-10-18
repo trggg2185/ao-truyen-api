@@ -10,9 +10,7 @@ import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 import lombok.experimental.SuperBuilder;
-import lombok.extern.slf4j.Slf4j;
 
-@Slf4j
 @Getter
 @Setter
 @NoArgsConstructor
@@ -34,6 +32,9 @@ public class Manga extends BaseEntity {
 
     String authorsName;
 
+    @Column(length = 500)
+    String coverImageUrl;
+
     // method này luôn chạy trc khi insert hoặc update manga, để tự động tạo slug từ name
     @PrePersist
     @PreUpdate
@@ -43,7 +44,6 @@ public class Manga extends BaseEntity {
         }
 
         this.slug = new Slugify().slugify(this.name);
-        log.info("Manga name: {} -> slug: {}", this.name, this.slug);
     }
 
     // Quan hệ với bảng thể loại, 1 manga có nhiều thể loại, 1 thể loại thuộc về nhiều manga

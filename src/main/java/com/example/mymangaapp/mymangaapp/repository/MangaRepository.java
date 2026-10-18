@@ -3,21 +3,18 @@ package com.example.mymangaapp.mymangaapp.repository;
 import com.example.mymangaapp.mymangaapp.entity.Manga;
 import com.example.mymangaapp.mymangaapp.enums.MangaStatus;
 import com.example.mymangaapp.mymangaapp.enums.TransGroupStatus;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.lang.NonNull;
 
 import java.util.Optional;
 
-/* Quy định của repository:
-*  - Public endpoints nên dùng method light / tối giản nếu không cần join nhiều bảng.
-*  - Admin endpoints nên dùng method detailed / có entityGraph để join thêm thông tin cần thiết.
-*  - Khi query liên quan đến membership group, phải tính cả ownerTransGroup và transGroups.
-* */
 public interface MangaRepository extends JpaRepository<Manga, String> {
 
    // Check xem có thật là được nhóm dịch này dịch không
@@ -42,13 +39,15 @@ public interface MangaRepository extends JpaRepository<Manga, String> {
    Page<Manga> findAllDetailed(Pageable pageable);
 
    @Query("SELECT m FROM Manga m WHERE m.status = :status")
-   Page<Manga> findAllDetailedByStatus(MangaStatus status, Pageable pageable);
-
-   @EntityGraph(attributePaths = { "categories", "transGroups", "chapters" })
-   Optional<Manga> findWithDetailsAndChaptersById(String id);
+   Page<Manga> findAllDetailedByStatus(@Param("status") MangaStatus status, Pageable pageable);
 
    @EntityGraph(attributePaths = { "categories", "transGroups" })
    Optional<Manga> findWithDetailsById(String id);
+
+   // Dùng khi rút nhóm: khóa dòng manga, hai request cùng rút sẽ xếp hàng
+   @Lock(LockModeType.PESSIMISTIC_WRITE)
+   @Query("SELECT m FROM Manga m WHERE m.id = :id")
+   Optional<Manga> findByIdForUpdate(@Param("id") String id);
 
    @EntityGraph(attributePaths = { "transGroups" })
    Optional<Manga> findWithTransGroupsById(String id);

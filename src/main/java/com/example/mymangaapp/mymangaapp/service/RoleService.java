@@ -51,8 +51,6 @@ public class RoleService {
 
         List<Permission> permissions = permissionRepository.findAllById(request.getPermissions());
 
-        log.info(permissions.toString());
-        
         if (CollectionUtils.isEmpty(permissions)) {
             throw new AppException(ResponseCode.PERMISSION_INVALID);
         }

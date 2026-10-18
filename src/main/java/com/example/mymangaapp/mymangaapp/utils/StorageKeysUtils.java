@@ -15,7 +15,12 @@ public final class StorageKeysUtils {
     private StorageKeysUtils() {}
 
     static String TMP_PREFIX = "tmp/";
+    static String USER_PREFIX = "users/";
+    static String GROUP_PREFIX = "groups/";
+    static String MANGA_PREFIX = "mangas/";
+
     static String AVATAR_PREFIX = "avatars/";
+    static String COVER_IMAGE_PREFIX = "cover/";
     static DateTimeFormatter DATE_FOLDER =  DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
     // url r2 cho các file ảnh đc lưu trong tmp: tmp/yyyy-MM-dd/uuid.webp
@@ -23,9 +28,40 @@ public final class StorageKeysUtils {
         return TMP_PREFIX + LocalDateTime.now(ZoneId.systemDefault()).format(DATE_FOLDER) + "/" + newFileName();
     }
 
-    // url r2 cho avatar: avatars/userId/uuid.webp
+    // path r2 cho avatar của user: users/userId/avatars/uuid.webp
     public static String avatar(String userId) {
-        return AVATAR_PREFIX + userId + "/" + newFileName();
+        return avatarPrefix(userId) + newFileName();
+    }
+
+    public static String avatarPrefix(String userId) {
+        return USER_PREFIX + userId + "/" + AVATAR_PREFIX;
+    }
+
+    // path r2 cho avatar của nhóm dịch: groups/groupId/avatars/uuid.webp
+    public static String groupAvatar(String groupId) {
+        return groupAvatarPrefix(groupId) + newFileName();
+    }
+
+    public static String groupAvatarPrefix(String groupId) {
+        return GROUP_PREFIX + groupId + "/" + AVATAR_PREFIX;
+    }
+
+    // path r2 cho ảnh bìa của nhóm dịch: groups/groupId/cover/uuid.webp
+    public static String groupCover(String groupId) {
+        return groupCoverPrefix(groupId) + newFileName();
+    }
+
+    public static String groupCoverPrefix(String groupId) {
+        return GROUP_PREFIX + groupId + "/" + COVER_IMAGE_PREFIX;
+    }
+
+    // path r2 cho ảnh bìa của truyện: mangas/mangaId/cover/uuid.webp
+    public static String mangaCover(String mangaId) {
+        return MANGA_PREFIX + mangaId + "/" + COVER_IMAGE_PREFIX + newFileName();
+    }
+
+    public static String chapterPrefix(String mangaId, String chapterId) {
+        return MANGA_PREFIX + mangaId + "/" + chapterId + "/";
     }
 
     public static boolean isTmp(String key) {

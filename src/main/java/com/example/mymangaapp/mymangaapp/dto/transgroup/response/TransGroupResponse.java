@@ -20,6 +20,8 @@ public class TransGroupResponse {
     UserSummaryResponse leader;
     String name;
     String slug;
+    String avatar;
+    String coverImageUrl;
     String status;
     Set<UserSummaryResponse> members;
     String description;

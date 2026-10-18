@@ -3,9 +3,11 @@ package com.example.mymangaapp.mymangaapp.service;
 import com.example.mymangaapp.mymangaapp.dto.manga.request.MangaCreationRequest;
 import com.example.mymangaapp.mymangaapp.dto.manga.request.MangaUpdateRequest;
 import com.example.mymangaapp.mymangaapp.dto.manga.response.MangaDetailsResponse;
+import com.example.mymangaapp.mymangaapp.dto.manga.response.MangaManagementResponse;
 import com.example.mymangaapp.mymangaapp.dto.manga.response.MangaResponse;
 import com.example.mymangaapp.mymangaapp.dto.common.PaginatedResponse;
 import com.example.mymangaapp.mymangaapp.dto.manga.response.MangaSummaryResponse;
+import com.example.mymangaapp.mymangaapp.dto.transgroup.response.TransGroupManagementResponse;
 import com.example.mymangaapp.mymangaapp.entity.Category;
 import com.example.mymangaapp.mymangaapp.entity.Manga;
 import com.example.mymangaapp.mymangaapp.entity.TransGroup;
@@ -14,6 +16,7 @@ import com.example.mymangaapp.mymangaapp.enums.TransGroupStatus;
 import com.example.mymangaapp.mymangaapp.exception.AppException;
 import com.example.mymangaapp.mymangaapp.exception.ResponseCode;
 import com.example.mymangaapp.mymangaapp.mapper.MangaMapper;
+import com.example.mymangaapp.mymangaapp.mapper.TransGroupMapper;
 import com.example.mymangaapp.mymangaapp.repository.CategoryRepository;
 import com.example.mymangaapp.mymangaapp.repository.MangaRepository;
 import com.example.mymangaapp.mymangaapp.repository.TransGroupRepository;
@@ -47,6 +50,7 @@ public class MangaService {
     CategoryRepository categoryRepository;
 
     MangaMapper mangaMapper;
+    TransGroupMapper transGroupMapper;
 
 
     // ----------------------------chức năng dành cho leader nhóm ---------------------------------//
@@ -100,19 +104,67 @@ public class MangaService {
                 .findWithDetailsById(mangaId)
                 .orElseThrow(() -> new AppException(ResponseCode.MANGA_NOT_FOUND));
 
-        List<Category> categories = categoryRepository.findAllById(request.getCategoryIds());
-
-        // check 1 là ko thấy category nào, 2 là có vài category ko tồn tại thì bắn exception
-        if (categories.isEmpty() || categories.size() != request.getCategoryIds().size()) {
-            throw new AppException(ResponseCode.CATEGORY_NOT_FOUND);
-        }
-
         mangaMapper.updateMangaFromRequest(manga, request);
-        manga.setCategories(new HashSet<>(categories));
+
+        if (request.getCategoryIds() != null && !request.getCategoryIds().isEmpty()) {
+            List<Category> categories = categoryRepository.findAllById(request.getCategoryIds());
+
+            // check 1 là ko thấy category nào, 2 là có vài category ko tồn tại thì bắn exception
+            if (categories.isEmpty() || categories.size() != request.getCategoryIds().size()) {
+                throw new AppException(ResponseCode.CATEGORY_NOT_FOUND);
+            }
+
+            manga.setCategories(new HashSet<>(categories));
+        }
 
         addGroups(manga, request.getAddTransGroups());
 
         return mangaMapper.toMangaResponse(mangaRepository.save(manga));
+    }
+
+    // Đây là endpoint dành cho leader nhóm để get manga ra chỉnh sửa
+    // trả về response khác so với response trên hàm getMangaById
+    @Transactional(readOnly = true)
+    public MangaManagementResponse getMangaForManagementById(@NonNull String mangaId) {
+
+        String currentUserId = SecurityUtils.getCurrentUserId();
+
+        // Check có phải user này là leader nhóm dịch truyện này ko (nhóm phải đg hoạt động)
+        if (!mangaRepository.isLeaderOfManga(currentUserId, mangaId, TransGroupStatus.APPROVED)) {
+            throw new AppException(ResponseCode.UNAUTHORIZED);
+        }
+
+        Manga manga = mangaRepository
+                .findWithDetailsById(mangaId)
+                .orElseThrow(() -> new AppException(ResponseCode.MANGA_NOT_FOUND));
+
+        TransGroup myGroup = transGroupRepository
+                .findByLeaderIdAndStatus(currentUserId, TransGroupStatus.APPROVED)
+                .orElseThrow(() -> new AppException(ResponseCode.TRANSGROUP_NOT_FOUND));
+
+        MangaManagementResponse response = mangaMapper.toMangaManagementResponse(manga);
+
+        List<TransGroup> activeGroups = manga.getTransGroups().stream()
+                .filter(transGroup -> transGroup.getStatus().equals(TransGroupStatus.APPROVED))
+                .toList();
+
+        // Tính toán mảng các ds nhóm trả về xem có cờ xem leader hiện tại có thể xoá nhóm đó không
+        List<TransGroupManagementResponse> responses = activeGroups.stream()
+                .map(transGroup -> {
+                    TransGroupManagementResponse res = transGroupMapper.toTransGroupManagementResponse(transGroup);
+
+                    // Nhóm dịch được xoá khi chính user hiện tại là leader nhóm đó
+                    // và phải có từ 2 nhóm trở lên đang dịch truyện này
+                    boolean isRemovable = transGroup.getId().equals(myGroup.getId()) && activeGroups.size() > 1;
+                    res.setCanRemove(isRemovable);
+
+                    return res;
+                })
+                .toList();
+
+        response.setTransGroups(responses);
+
+        return response;
     }
 
 
@@ -169,6 +221,7 @@ public class MangaService {
     // đây là khi họ vào trang home của web
     // sẽ lấy tất cả các manga có phân trang, những chỉ lấy với
     // chút thông tin của manga như: name, categories, description, transgroups
+    @Transactional(readOnly = true)
     public PaginatedResponse<MangaResponse> getMangas(int page, int size, String sortBy) {
         
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, sortBy));
@@ -184,6 +237,7 @@ public class MangaService {
     // đây là endpoint khi user vào trang của nhóm dịch
     // thì lấy tất cả các bộ truyện mà nhóm đang tham gia dịch
     // cả dịch chính lẫn phụ
+    @Transactional(readOnly = true)
     public PaginatedResponse<MangaSummaryResponse> getMangasByGroupId(
             @NonNull String groupId, int page,
             int size, @NonNull String sortBy
@@ -209,7 +263,7 @@ public class MangaService {
 
         // này phải dùng method select toàn bộ thông tin manga có cả chapter
         Manga manga = mangaRepository
-                .findWithDetailsAndChaptersById(id)
+                .findWithDetailsById(id)
                 .orElseThrow(() -> new AppException(ResponseCode.MANGA_NOT_FOUND));
 
         return mangaMapper.toMangaDetailsResponse(manga);

@@ -2,13 +2,10 @@ package com.example.mymangaapp.mymangaapp.controller;
 
 import com.example.mymangaapp.mymangaapp.annotation.RateLimit;
 import com.example.mymangaapp.mymangaapp.dto.manga.request.MangaUpdateRequest;
-import com.example.mymangaapp.mymangaapp.dto.manga.response.MangaDetailsResponse;
-import com.example.mymangaapp.mymangaapp.dto.manga.response.MangaResponse;
-import com.example.mymangaapp.mymangaapp.dto.manga.response.MangaSummaryResponse;
+import com.example.mymangaapp.mymangaapp.dto.manga.response.*;
 import com.example.mymangaapp.mymangaapp.enums.LimitType;
 import com.example.mymangaapp.mymangaapp.dto.manga.request.MangaCreationRequest;
 import com.example.mymangaapp.mymangaapp.dto.common.ApiResponse;
-import com.example.mymangaapp.mymangaapp.dto.manga.response.DeleteMangaResponse;
 import com.example.mymangaapp.mymangaapp.dto.common.PaginatedResponse;
 import com.example.mymangaapp.mymangaapp.enums.MangaStatus;
 import com.example.mymangaapp.mymangaapp.exception.ResponseCode;
@@ -67,6 +64,16 @@ public class MangaController {
         return ApiResponse.<DeleteMangaResponse>builder()
                 .message(ResponseCode.SUCCESS.getMessage())
                 .result(DeleteMangaResponse.builder().groupId(groupId).mangaId(mangaId).build())
+                .build();
+    }
+
+    @GetMapping("/mangas/{mangaId}/management")
+    @RateLimit(capacity = 60)
+    public ApiResponse<MangaManagementResponse> getMangaForManagementById(@PathVariable @NonNull String mangaId) {
+        MangaManagementResponse response = mangaService.getMangaForManagementById(mangaId);
+
+        return ApiResponse.<MangaManagementResponse>builder()
+                .result(response)
                 .build();
     }
 

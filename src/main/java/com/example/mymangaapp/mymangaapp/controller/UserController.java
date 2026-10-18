@@ -136,7 +136,7 @@ public class UserController {
     @PatchMapping(value = "/admin/users/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @RateLimit(capacity = 10, limitType = LimitType.USER_ID)
     public ApiResponse<UserResponse> updateUserById(@PathVariable @NonNull String id,
-            @Valid @ModelAttribute UserUpdateRequest request) {
+            @Valid @ModelAttribute("userUpdateRequest") UserUpdateRequest request) {
 
         UserResponse response = userService.updateUserById(id, request);
 

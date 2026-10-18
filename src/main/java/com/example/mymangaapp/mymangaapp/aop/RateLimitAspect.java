@@ -80,8 +80,6 @@ public class RateLimitAspect {
                     String.valueOf(rateLimitAnnotation.capacity()) // ARGV[2]
             );
 
-            log.info("Cho truy cập path không: {}, redis key: {}", result, redisKey);
-
             // check an toàn
             if (Long.valueOf(0L).equals(result)) {
                 throw new AppException(ResponseCode.RATE_LIMIT_EXCEEDED);
@@ -89,7 +87,7 @@ public class RateLimitAspect {
         } catch (AppException exception) {
             throw exception;
         } catch (Exception exception) {
-            log.error("Check rate limit lỗi cho key {}: {}", redisKey, exception.getMessage());
+            log.error("Rate limit check failed for {} {}", httpMethod, path, exception);
         }
 
         // cho phép request đi qua

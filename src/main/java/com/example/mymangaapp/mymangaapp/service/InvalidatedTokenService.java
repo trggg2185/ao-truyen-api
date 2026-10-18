@@ -24,7 +24,7 @@ public class InvalidatedTokenService {
         if (ttlInSeconds > 0) {
             String key = REDIS_KEY_PREFIX + token;
             redisTemplate.opsForValue().set(key, "invalidated", ttlInSeconds, TimeUnit.SECONDS);
-            log.info("Token bị vô hiệu hoá: {}", key);
+            log.debug("Token bị vô hiệu hoá");
         }
     }
 

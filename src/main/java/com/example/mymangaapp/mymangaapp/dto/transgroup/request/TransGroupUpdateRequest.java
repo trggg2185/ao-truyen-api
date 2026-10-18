@@ -3,6 +3,7 @@ package com.example.mymangaapp.mymangaapp.dto.transgroup.request;
 import jakarta.validation.constraints.Size;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
+import org.springframework.web.multipart.MultipartFile;
 
 @Data
 @AllArgsConstructor
@@ -16,5 +17,11 @@ public class TransGroupUpdateRequest {
 
     @Size(max = 300, message = "TRANSGROUP_DESCRIPTION_INVALID")
     String description;
+
+    // File avatar nhóm
+    MultipartFile avatarFile;
+
+    // File ảnh bìa nhóm
+    MultipartFile coverFile;
 
 }

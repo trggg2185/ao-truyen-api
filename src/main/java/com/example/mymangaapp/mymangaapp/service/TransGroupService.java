@@ -17,6 +17,9 @@ import com.example.mymangaapp.mymangaapp.mapper.TransGroupMapper;
 import com.example.mymangaapp.mymangaapp.repository.RoleRepository;
 import com.example.mymangaapp.mymangaapp.repository.TransGroupRepository;
 import com.example.mymangaapp.mymangaapp.repository.UserRepository;
+import com.example.mymangaapp.mymangaapp.service.storage.ObjectStorage;
+import com.example.mymangaapp.mymangaapp.service.storage.StorageService;
+import com.example.mymangaapp.mymangaapp.utils.StorageKeysUtils;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -30,6 +33,8 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
+
 @Service
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
@@ -41,6 +46,9 @@ public class TransGroupService {
     RoleRepository roleRepository;
 
     TransGroupMapper transGroupMapper;
+
+    ObjectStorage objectStorage;
+    StorageService storageService;
 
     // method này đc gọi từ method đã có transactional thì method này ko cần transactional
     // vì method này khác tự tham gia vào transaction đó, khi fail thì rollback toàn bộ 2 method
@@ -164,10 +172,11 @@ public class TransGroupService {
 
     // cập nhật thông tin group (name và description)
     @PreAuthorize("@groupSec.isGroupLeaderOrAdmin(#id)")
+    @Transactional
     public TransGroupResponse updateGroupById(@NonNull String id, @NonNull TransGroupUpdateRequest request) {
 
         TransGroup transGroup = transGroupRepository
-                .findWithLeaderAndMembersById(id)
+                .findWithLeaderAndMembersByIdAndStatus(id, TransGroupStatus.APPROVED)
                 .orElseThrow(() -> new AppException(ResponseCode.TRANSGROUP_NOT_FOUND));
 
         if (!transGroup.getStatus().equals(TransGroupStatus.APPROVED)) {
@@ -175,6 +184,32 @@ public class TransGroupService {
         }
 
         transGroupMapper.updateTransGroupFromRequest(transGroup, request);
+
+        // Nêu request có avatar thì phải cập nhật
+        if (request.getAvatarFile() != null && !request.getAvatarFile().isEmpty()) {
+
+            // xoá avatar cũ của nhóm nếu có
+            if (transGroup.getAvatar() != null && !transGroup.getAvatar().isEmpty()) {
+                objectStorage.deleteFilesWithPrefix(StorageKeysUtils.groupAvatarPrefix(transGroup.getId()), Instant.now());
+            }
+
+            // upload avatar mới của nhóm
+            String groupAvatarUrl = storageService.uploadGroupAvatar(transGroup.getId(), request.getAvatarFile());
+            // lưu url
+            transGroup.setAvatar(groupAvatarUrl);
+        }
+
+        // Nêu request có ảnh bìa thì phải cập nhật
+        if (request.getCoverFile() != null && !request.getCoverFile().isEmpty()) {
+
+            // xoá ảnh bìa cũ của nhóm nếu có
+            if (transGroup.getCoverImageUrl() != null && !transGroup.getCoverImageUrl().isEmpty()) {
+                objectStorage.deleteFilesWithPrefix(StorageKeysUtils.groupCoverPrefix(transGroup.getId()), Instant.now());
+            }
+
+            String groupCoverUrl = storageService.uploadGroupCover(transGroup.getId(), request.getCoverFile());
+            transGroup.setCoverImageUrl(groupCoverUrl);
+        }
 
         return transGroupMapper.toTransGroupResponse(transGroupRepository.save(transGroup));
 

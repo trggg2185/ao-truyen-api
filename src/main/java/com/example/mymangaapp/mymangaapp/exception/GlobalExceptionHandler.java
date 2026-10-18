@@ -84,7 +84,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(AuthorizationDeniedException.class)
     private ResponseEntity<ApiResponse<?>> handlingAuthorizationDeniedException(AuthorizationDeniedException exception) {
 
-        log.error("Vi phạm phân quyền", exception);
+        log.warn("Authorization denied: {}", exception.getMessage());
 
         ResponseCode responseCode = ResponseCode.UNAUTHORIZED;
 
@@ -102,7 +102,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MaxUploadSizeExceededException.class)
     private ResponseEntity<ApiResponse<?>> handlingMaxUploadSize(MaxUploadSizeExceededException exception) {
 
-        log.error("Kích thước file quá lớn!", exception);
+        log.warn("Upload rejected because the file is too large");
 
         ResponseCode responseCode = ResponseCode.FILE_SIZE_INVALID;
 
@@ -120,7 +120,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(DataIntegrityViolationException.class)
     private ResponseEntity<ApiResponse<?>> handlingDataIntegrity(DataIntegrityViolationException exception) {
 
-        log.error("Vi phạm ràng buộc dữ liệu!", exception);
+        log.warn("Data integrity violation: {}", exception.getMessage());
 
         ResponseCode responseCode = ResponseCode.DATA_INTEGRITY_VIOLATION;
 
@@ -138,7 +138,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(HttpMessageNotReadableException.class)
     private ResponseEntity<ApiResponse<?>> handlingHttpMessageNotReadable(HttpMessageNotReadableException exception) {
 
-        log.error("Lỗi không thể đọc được message http", exception);
+        log.warn("Malformed HTTP request: {}", exception.getMessage());
 
         // Mặc định bắn lỗi http message not readable
         ResponseCode responseCode = ResponseCode.HTTP_MESSAGE_NOT_READABLE;
@@ -148,7 +148,7 @@ public class GlobalExceptionHandler {
 
             String fieldName = invalidFormatException.getPath().getFirst().getFieldName();
 
-            log.error("Trường bị lỗi: {}", fieldName);
+            log.debug("Malformed request field: {}", fieldName);
         }
 
         ApiResponse<?> apiResponse = ApiResponse.builder()
@@ -165,7 +165,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MethodArgumentNotValidException.class)
     private ResponseEntity<ApiResponse<?>> handlingValidationException(MethodArgumentNotValidException exception) {
 
-        log.error("Lỗi giá trị các trường của request không hợp lệ!", exception);
+        log.warn("Request validation failed: {}", exception.getMessage());
 
         ResponseCode responseCode = ResponseCode.ENUM_KEY_INVALID;
 
@@ -179,7 +179,7 @@ public class GlobalExceptionHandler {
             // Bắt ngoại lệ enum key để tránh việc GlobalExceptionHandler đứng ra giải 
             // quyết và trả về response UNCATEGORIZED_ERROR 500
         } catch (IllegalArgumentException e) {
-            log.error("Lỗi enum key không hợp lệ", e);
+            log.error("Invalid response code key in validation metadata: {}", enumKey, e);
         }
 
         // Lấy đối tượng chứa thông tin chi tiết về 1 ràng buộc cụ thể đã vi phạm
@@ -211,7 +211,7 @@ public class GlobalExceptionHandler {
     private String mapAttribute(String message, Map<String, Object> attributes) {
 
         if (message == null || attributes.isEmpty()) {
-            log.error("Lỗi message hoặc attributes null!");
+            log.warn("Response message or validation attributes are missing");
             return message;
         }
 

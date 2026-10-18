@@ -1,6 +1,7 @@
 package com.example.mymangaapp.mymangaapp.dto.manga.response;
 
 import com.example.mymangaapp.mymangaapp.dto.category.response.CategoryResponse;
+import com.example.mymangaapp.mymangaapp.dto.transgroup.response.TransGroupSummaryResponse;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
@@ -18,10 +19,11 @@ public class MangaResponse {
     String id;
     String name;
     String slug;
+    String coverImageUrl;
     String status;
     String description;
     Set<CategoryResponse> categories;
-    List<String> transGroupsId;
+    List<TransGroupSummaryResponse> transGroups;
     Instant updatedAt;
 
 }

@@ -21,6 +21,7 @@ public class TransGroupDetailsResponse {
     UserSummaryResponse leader;
     String name;
     String slug;
+    String coverImageUrl;
     String status;
     Set<MangaSummaryResponse> translatedMangas; // lấy tất truyện của nhóm đã dịch
     Set<UserSummaryResponse> members; // tất cả thành viên nhóm

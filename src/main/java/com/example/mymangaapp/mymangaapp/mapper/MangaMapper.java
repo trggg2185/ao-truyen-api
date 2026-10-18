@@ -3,6 +3,7 @@ package com.example.mymangaapp.mymangaapp.mapper;
 import com.example.mymangaapp.mymangaapp.dto.manga.request.MangaCreationRequest;
 import com.example.mymangaapp.mymangaapp.dto.manga.request.MangaUpdateRequest;
 import com.example.mymangaapp.mymangaapp.dto.manga.response.MangaDetailsResponse;
+import com.example.mymangaapp.mymangaapp.dto.manga.response.MangaManagementResponse;
 import com.example.mymangaapp.mymangaapp.dto.manga.response.MangaResponse;
 import com.example.mymangaapp.mymangaapp.dto.manga.response.MangaSummaryResponse;
 import com.example.mymangaapp.mymangaapp.entity.Manga;
@@ -27,8 +28,8 @@ public interface MangaMapper {
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     Manga toManga(MangaCreationRequest request);
 
-    @Mapping(target = "transGroupsId", source = "transGroups")
     @Mapping(target = "categories", source = "categories")
+    @Mapping(target = "transGroups", source = "transGroups")
     MangaResponse toMangaResponse(Manga manga);
 
     // Để mapper tự map từng phần tử transGroup thành transGroupId
@@ -38,9 +39,10 @@ public interface MangaMapper {
 
     MangaSummaryResponse toMangaSummaryResponse(Manga manga);
 
-    @Mapping(target = "transGroupsId", source = "transGroups")
-    @Mapping(target = "categories", source = "categories")
     MangaDetailsResponse toMangaDetailsResponse(Manga manga);
+
+    @Mapping(target = "transGroups", ignore = true) // tự tính
+    MangaManagementResponse toMangaManagementResponse(Manga manga);
 
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "categories", ignore = true)

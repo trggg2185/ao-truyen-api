@@ -68,7 +68,8 @@ public class ChapterController {
             @PathVariable @NonNull String mangaId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
-            @RequestParam(defaultValue = "createdAt") String sortBy
+            // Lấy ds các chapter của 1 manga mặc định xếp theo chapter index giảm dần
+            @RequestParam(defaultValue = "chapterIndex") String sortBy
     ) {
 
         PaginatedResponse<ChapterSummaryResponse> responses = chapterService.getAllChaptersByMangaId(mangaId, page, size, sortBy);

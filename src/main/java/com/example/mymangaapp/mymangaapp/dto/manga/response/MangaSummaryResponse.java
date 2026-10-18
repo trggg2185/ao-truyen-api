@@ -15,6 +15,7 @@ public class MangaSummaryResponse {
     String id;
     String name;
     String slug;
+    String coverImageUrl;
     String authorsName;
     String status;
     String description;

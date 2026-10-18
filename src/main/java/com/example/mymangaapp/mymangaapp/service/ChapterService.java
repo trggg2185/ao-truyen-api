@@ -117,7 +117,7 @@ public class ChapterService {
         // về chapter cũng sẽ tự động xoá
         chapterRepository.delete(chapter);
 
-        String prefix = "mangas/" + mangaId + "/" + chapterId + "/";
+        String prefix = StorageKeysUtils.chapterPrefix(mangaId, chapterId);
 
         // gọi xoá tất cả files trong prefix
         objectStorage.deleteFilesWithPrefix(prefix, Instant.now());
@@ -141,8 +141,7 @@ public class ChapterService {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, sortBy));
 
         org.springframework.data.domain.Page<ChapterSummaryResponse> dtoPage = chapterRepository
-                .findByMangaId(mangaId, pageable)
-                .map(chapterMapper::toChapterSummaryResponse);
+                .findSummariesByMangaId(mangaId, pageable);
 
         return PaginatedResponse.of(dtoPage);
     }
@@ -183,7 +182,7 @@ public class ChapterService {
 
     // copy files ảnh tmp sang folder chính thức là mangas/
     private List<String> copyPagesToFinalLocation(String mangaId, String chapterId, List<String> tmpKeys) {
-        String prefix = "mangas/" + mangaId + "/" + chapterId + "/";
+        String prefix = StorageKeysUtils.chapterPrefix(mangaId, chapterId);
 
         // Tính trước toàn bộ key đích: 001.webp, 002.webp, ...
         List<String> destKeys = new ArrayList<>(tmpKeys.size());

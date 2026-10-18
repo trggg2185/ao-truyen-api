@@ -13,6 +13,7 @@ import com.example.mymangaapp.mymangaapp.dto.user.response.UserSummaryResponse;
 import com.example.mymangaapp.mymangaapp.security.utils.SecurityUtils;
 import com.example.mymangaapp.mymangaapp.service.storage.ObjectStorage;
 import com.example.mymangaapp.mymangaapp.service.storage.StorageService;
+import com.example.mymangaapp.mymangaapp.utils.StorageKeysUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -84,7 +85,7 @@ public class UserService {
 
             // nếu user có avatar cũ thì xoá trc đã, nếu ko có thì thôi upload avatar mới luôn rồi set
             if (user.getAvatar() != null && !user.getAvatar().isEmpty()) {
-                String prefix = "avatars/" + user.getId() + "/";
+                String prefix =  StorageKeysUtils.avatarPrefix(user.getId());
                 objectStorage.deleteFilesWithPrefix(prefix, Instant.now());
             }
 
@@ -209,12 +210,12 @@ public class UserService {
         // Mapstruct tự động map từ UserUpdateRequest -> User
         userMapper.updateUserFromRequest(user, request);
 
-        // nếu có cập nhật avatar cập nhật
+        // nếu request có avatar thì cập nhật
         if (request.getAvatar() != null && !request.getAvatar().isEmpty()) {
 
             // nếu user có avatar cũ thì xoá trc đã, nếu ko có thì thôi upload avatar mới luôn rồi set
             if (user.getAvatar() != null && !user.getAvatar().isEmpty()) {
-                String prefix = "avatars/" + user.getId() + "/";
+                String prefix = StorageKeysUtils.avatarPrefix(user.getId());
                 objectStorage.deleteFilesWithPrefix(prefix, Instant.now());
             }
 

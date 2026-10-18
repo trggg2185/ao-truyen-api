@@ -64,7 +64,7 @@ public class GroupJoinRequestService {
 
         // Check nhóm tồn tại và đi vào hoạt động chưa
         TransGroup transGroup = transGroupRepository
-                .findByIdAndStatus(groupId, TransGroupStatus.APPROVED)
+                .findWithLeaderAndMembersByIdAndStatus(groupId, TransGroupStatus.APPROVED)
                 .orElseThrow(() -> new AppException(ResponseCode.TRANSGROUP_NOT_FOUND));
 
         GroupJoinRequest groupJoinRequest = GroupJoinRequest
@@ -159,11 +159,20 @@ public class GroupJoinRequestService {
         if (!groupJoinRequest.getStatus().equals(GroupJoinRequestStatus.PENDING)) {
             throw new AppException(ResponseCode.TRANSGROUP_JOIN_REQUEST_STATUS_INVALID);
         }
-        groupJoinRequest.setStatus(GroupJoinRequestStatus.APPROVED);
 
         Role translatorRole = roleRepository
                 .findById(RoleConstants.TRANSLATOR)
                 .orElseThrow(() -> new AppException(ResponseCode.ROLE_NOT_FOUND));
+
+        // trường hợp user trước đây đã tham gia nhóm và rời khỏi rồi
+        // nhưng trong yêu cầu tham gia vẫn tồn tạiyc đã chấp nhận
+        GroupJoinRequest approvedRequest = groupJoinRequestRepository
+                .findByTransGroupIdAndUserIdAndStatus(
+                        transGroup.getId(),
+                        user.getId(),
+                        GroupJoinRequestStatus.APPROVED
+                )
+                .orElse(null);
 
         // Gán nhóm đó vào user
         user.setTransGroup(transGroup);
@@ -176,6 +185,14 @@ public class GroupJoinRequestService {
         userRepository.save(user);
         transGroupRepository.save(transGroup);
 
+        // Xoá ngay yc trước đây đã đc chấp nhận
+        if (approvedRequest != null) {
+            // Không thể đổi pending thành approved vì unique key đã có bản ghi approved cũ.
+            groupJoinRequestRepository.delete(groupJoinRequest);
+            return groupJoinRequestMapper.toJoinRequestResponse(approvedRequest);
+        }
+
+        groupJoinRequest.setStatus(GroupJoinRequestStatus.APPROVED);
         return groupJoinRequestMapper.toJoinRequestResponse(
                 groupJoinRequestRepository.save(groupJoinRequest)
         );

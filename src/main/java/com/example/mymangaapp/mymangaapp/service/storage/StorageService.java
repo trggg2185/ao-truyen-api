@@ -61,12 +61,33 @@ public class StorageService {
         }
     }
 
-    public String uploadAvatar(String userId, MultipartFile avatarFile) {
+
+    public String uploadAvatar(String userId, MultipartFile file) {
         try {
-            byte[] bytes = imageProcessor.toAvatar(avatarFile);
+            byte[] bytes = imageProcessor.toAvatar(file);
             return put(StorageKeysUtils.avatar(userId), bytes);
         } catch (IOException | SdkException e) {
-            log.error("Upload avatar thất bại, userId={}", userId, e);
+            log.error("Upload avatar cho user thất bại, userId={}", userId, e);
+            throw new AppException(ResponseCode.FILE_UPLOAD_FAILED);
+        }
+    }
+
+    public String uploadGroupAvatar(String groupId, MultipartFile file) {
+        try {
+            byte[] bytes = imageProcessor.toAvatar(file);
+            return put(StorageKeysUtils.groupAvatar(groupId), bytes);
+        } catch (IOException | SdkException e) {
+            log.error("Upload avatar cho nhóm dịch thất bại, groupId={}", groupId, e);
+            throw new AppException(ResponseCode.FILE_UPLOAD_FAILED);
+        }
+    }
+
+    public String uploadGroupCover(String groupId, MultipartFile file) {
+        try {
+            byte[] bytes = imageProcessor.toGroupCover(file);
+            return put(StorageKeysUtils.groupCover(groupId), bytes);
+        } catch (IOException | SdkException e) {
+            log.error("Upload ảnh bìa cho nhóm dịch thất bại, groupId={}", groupId, e);
             throw new AppException(ResponseCode.FILE_UPLOAD_FAILED);
         }
     }
@@ -85,6 +106,7 @@ public class StorageService {
 
     private String put(String key, byte[] bytes) {
         storage.put(key, bytes, ImageProcessor.OUTPUT_CONTENT_TYPE);
+        log.info("Upload ảnh thành công!");
         return storage.toPublicUrl(key);
     }
 

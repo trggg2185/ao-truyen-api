@@ -14,7 +14,7 @@ public class TransGroupSummaryResponse {
 
     String id;
     String name;
-    // còn avatar nữa nhưng chưa làm, hôm nào cập nhật sau
     String slug;
+    String avatar;
 
 }

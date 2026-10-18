@@ -23,6 +23,15 @@ public interface GroupCreationRequestRepository extends JpaRepository<GroupCreat
     Page<GroupCreationRequest> findAllByStatus(GroupCreationRequestStatus status, Pageable pageable);
 
     @EntityGraph(attributePaths = { "creator" })
+    Page<GroupCreationRequest> findAllByCreatorIdAndStatus(
+            String creatorId,
+            GroupCreationRequestStatus status,
+            Pageable pageable);
+
+    @EntityGraph(attributePaths = { "creator" })
+    Page<GroupCreationRequest> findAllByCreatorId(String creatorId, Pageable pageable);
+
+    @EntityGraph(attributePaths = { "creator" })
     @NonNull
     Page<GroupCreationRequest> findAll(@NonNull Pageable pageable);
 

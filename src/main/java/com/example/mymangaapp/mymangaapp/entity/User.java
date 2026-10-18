@@ -53,6 +53,7 @@ public class User extends BaseEntity {
     @Column(name = "bio", length = 300)
     String bio;
 
+    @Column(length = 500)
     String avatar; // url của avatar
 
     // QH: Nhiều user có thể thuộc về 1 trans group
