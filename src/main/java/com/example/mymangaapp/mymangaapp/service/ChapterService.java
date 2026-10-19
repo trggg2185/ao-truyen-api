@@ -15,6 +15,7 @@ import com.example.mymangaapp.mymangaapp.repository.MangaRepository;
 import com.example.mymangaapp.mymangaapp.security.utils.SecurityUtils;
 import com.example.mymangaapp.mymangaapp.service.storage.ImageProcessor;
 import com.example.mymangaapp.mymangaapp.service.storage.ObjectStorage;
+import com.example.mymangaapp.mymangaapp.service.storage.StorageService;
 import com.example.mymangaapp.mymangaapp.utils.StorageKeysUtils;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -28,11 +29,6 @@ import org.springframework.lang.NonNull;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
-import software.amazon.awssdk.core.exception.SdkClientException;
-import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
-import software.amazon.awssdk.services.s3.model.S3Exception;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -50,6 +46,7 @@ public class ChapterService {
     ChapterMapper chapterMapper;
 
     PageService pageService;
+    StorageService storageService;
 
     ObjectStorage objectStorage;
 
@@ -60,10 +57,7 @@ public class ChapterService {
     @Transactional
     public ChapterResponse createChapter(@NonNull String mangaId, @NonNull ChapterRequest request) {
 
-        // 1. Validate đầu vào trước: không chạm DB, không chạm R2
-        List<String> tmpKeys = resolveTmpKeys(request.getPageUrls());
-
-        // 2. Tồn tại + quyền
+        // Tồn tại + quyền
         if (!mangaRepository.existsById(mangaId)) {
             throw new AppException(ResponseCode.MANGA_NOT_FOUND);
         }
@@ -74,15 +68,22 @@ public class ChapterService {
             throw new AppException(ResponseCode.CHAPTER_INDEX_ALREADY_EXISTED);
         }
 
-        // 3. Insert chapter NGAY để DB chặn trùng index trước khi tốn công copy ảnh
+        // Insert chapter NGAY để DB chặn trùng index trước khi tốn công copy ảnh
         Chapter chapter = chapterMapper.toChapter(request);
         chapter.setManga(mangaRepository.getReferenceById(mangaId));
         chapter = insertChapter(chapter);
 
-        // 4. Copy ảnh từ tmp/ sang vị trí chính thức
-        List<String> pageUrls = copyPagesToFinalLocation(mangaId, chapter.getId(), tmpKeys);
+        // Tính toán destKeys cho các trang truyện
+        String prefix = StorageKeysUtils.chapterPrefix(mangaId, chapter.getId());
+        List<String> destKeys = new ArrayList<>(request.getPageUrls().size());
+        for (int i = 0; i < request.getPageUrls().size(); i++) {
+            destKeys.add(prefix + String.format("%03d", i + 1) + "." + ImageProcessor.OUTPUT_EXTENSION);
+        }
 
-        // 5. Tạo pages
+        // Copy ảnh từ tmp/ sang vị trí chính thức
+        List<String> pageUrls = storageService.promoteTmpFiles(request.getPageUrls(), destKeys);
+
+        // Tạo pages
         List<Page> pages = pageService.createPages(chapter, pageUrls);
         chapter.getPages().addAll(pages);
 
@@ -149,20 +150,6 @@ public class ChapterService {
 
     // -----------------------------------------private method----------------------------------------------------//
 
-    // Url -> key, và chỉ chấp nhận file nằm trong tmp/
-    private List<String> resolveTmpKeys(List<String> tmpUrls) {
-        return tmpUrls.stream()
-                .map(url -> {
-                    String key = objectStorage.toKey(url);   // ném URL_INVALID nếu không thuộc CDN của mình
-                    if (!StorageKeysUtils.isTmp(key)) {
-                        throw new AppException(ResponseCode.FILE_INVALID);
-                    }
-                    return key;
-                })
-                .toList();
-    }
-
-
     private void checkCanCreateChapter(String mangaId) {
         String userId = SecurityUtils.getCurrentUserId();
         if (!mangaRepository.isMemberOrLeaderOfAnyGroupOfManga(userId, mangaId, TransGroupStatus.APPROVED)) {
@@ -178,56 +165,6 @@ public class ChapterService {
             // hai request cùng đăng một chapterIndex, unique (manga_id, chapter_index) chặn lại
             throw new AppException(ResponseCode.CHAPTER_INDEX_ALREADY_EXISTED);
         }
-    }
-
-    // copy files ảnh tmp sang folder chính thức là mangas/
-    private List<String> copyPagesToFinalLocation(String mangaId, String chapterId, List<String> tmpKeys) {
-        String prefix = StorageKeysUtils.chapterPrefix(mangaId, chapterId);
-
-        // Tính trước toàn bộ key đích: 001.webp, 002.webp, ...
-        List<String> destKeys = new ArrayList<>(tmpKeys.size());
-        for (int i = 0; i < tmpKeys.size(); i++) {
-            destKeys.add(prefix + String.format("%03d", i + 1) + "." + ImageProcessor.OUTPUT_EXTENSION);
-        }
-
-        // Đăng ký dọn rác TRƯỚC khi copy: transaction rollback ở bất kỳ bước nào cũng dọn
-        deleteOnRollback(destKeys);
-
-        try {
-            for (int i = 0; i < tmpKeys.size(); i++) {
-                // không xóa tmp vội: user retry được, job dọn tmp/ sẽ lo sau
-                objectStorage.copyFile(tmpKeys.get(i), destKeys.get(i), false);
-            }
-        } catch (NoSuchKeyException e) {          // phải đứng trước S3Exception vì là lớp con của nó
-            log.warn("File tmp không còn tồn tại (có thể đã bị dọn): {}", e.getMessage());
-            throw new AppException(ResponseCode.FILE_INVALID);
-        } catch (SdkClientException e) {          // lỗi phía client (mạng, timeout...)
-            log.error("Không kết nối được R2 khi copy ảnh chương", e);
-            throw new AppException(ResponseCode.STORAGE_SERVICE_UNAVAILABLE);
-        } catch (S3Exception e) {                 // lỗi phía dịch vụ
-            log.error("R2 trả lỗi khi copy ảnh chương", e);
-            throw new AppException(ResponseCode.STORAGE_SERVICE_ERROR);
-        }
-
-        return destKeys.stream().map(objectStorage::toPublicUrl).toList();
-    }
-
-    // Chạy SAU khi transaction kết thúc. Nếu không phải COMMITTED thì xóa các file đã (hoặc định) copy
-    private void deleteOnRollback(List<String> keys) {
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-            @Override
-            public void afterCompletion(int status) {
-                if (status == STATUS_COMMITTED) return;
-
-                try {
-                    objectStorage.deleteFiles(keys);
-                    log.warn("Transaction không commit, đã dọn {} file trên R2", keys.size());
-                } catch (Exception e) {
-                    // dọn lỗi cũng không được làm mất lỗi gốc
-                    log.error("Không dọn được {} file rác trên R2, prefix {}", keys.size(), keys.getFirst(), e);
-                }
-            }
-        });
     }
 
 }

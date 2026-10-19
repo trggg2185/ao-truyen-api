@@ -21,6 +21,9 @@ import com.example.mymangaapp.mymangaapp.repository.CategoryRepository;
 import com.example.mymangaapp.mymangaapp.repository.MangaRepository;
 import com.example.mymangaapp.mymangaapp.repository.TransGroupRepository;
 import com.example.mymangaapp.mymangaapp.security.utils.SecurityUtils;
+import com.example.mymangaapp.mymangaapp.service.storage.ObjectStorage;
+import com.example.mymangaapp.mymangaapp.service.storage.StorageService;
+import com.example.mymangaapp.mymangaapp.utils.StorageKeysUtils;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -34,6 +37,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -51,6 +55,10 @@ public class MangaService {
 
     MangaMapper mangaMapper;
     TransGroupMapper transGroupMapper;
+
+    ObjectStorage objectStorage;
+
+    StorageService storageService;
 
 
     // ----------------------------chức năng dành cho leader nhóm ---------------------------------//
@@ -91,6 +99,16 @@ public class MangaService {
         manga.setCategories(new HashSet<>(categories));
         manga.setTransGroups(new HashSet<>(transGroups));
 
+        manga = mangaRepository.save(manga);
+
+        if (request.getCoverImageUrl() != null && request.getCoverImageUrl().isEmpty()) {
+            // copy từ tmp sang mangas/mangaId/cover/anh-bia.webp
+            String coverDestKey = StorageKeysUtils.mangaCover(manga.getId());
+
+            String finalCoverUrl = storageService.promoteTmpFile(request.getCoverImageUrl(), coverDestKey);
+            manga.setCoverImageUrl(finalCoverUrl);
+        }
+
         return mangaMapper.toMangaResponse(mangaRepository.save(manga));
     }
 
@@ -114,7 +132,33 @@ public class MangaService {
                 throw new AppException(ResponseCode.CATEGORY_NOT_FOUND);
             }
 
-            manga.setCategories(new HashSet<>(categories));
+            Set<Category> currentCategories = manga.getCategories();
+            Set<Category> newCategories = new HashSet<>(categories);
+
+            // Xoá categories ko nằm trong ds mới
+            currentCategories.removeIf(category -> !newCategories.contains(category));
+
+            // thêm những categories mới
+            currentCategories.addAll(newCategories);
+        }
+
+        if (request.getCoverImageUrl() != null && !request.getCoverImageUrl().isEmpty()) {
+
+            // Nếu có ảnh bìa cũ thì xoá
+            if (manga.getCoverImageUrl() != null) {
+                String prefix = StorageKeysUtils.mangaCoverPrefix(manga.getId());
+
+                objectStorage.deleteFilesWithPrefix(prefix, Instant.now());
+            }
+
+            // copy từ tmp sang mangas/mangaId/cover/anh-bia.webp
+            String coverDestKey = StorageKeysUtils.mangaCover(manga.getId());
+
+            String finalCoverUrl = storageService.promoteTmpFile(request.getCoverImageUrl(), coverDestKey);
+
+            log.info(coverDestKey);
+            log.info(finalCoverUrl);
+            manga.setCoverImageUrl(finalCoverUrl);
         }
 
         addGroups(manga, request.getAddTransGroups());

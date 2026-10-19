@@ -16,7 +16,7 @@ import java.util.Optional;
 public interface TransGroupRepository extends JpaRepository<TransGroup, String> {
 
 
-    @EntityGraph(attributePaths = { "leader", "members", "translatedMangas" })
+    @EntityGraph(attributePaths = { "leader", "members" })
     Optional<TransGroup> findWithDetailsById(String id);
 
     @NonNull

@@ -4,19 +4,20 @@ import com.example.mymangaapp.mymangaapp.constant.RoleConstants;
 import com.example.mymangaapp.mymangaapp.dto.transgroup.request.TransGroupUpdateRequest;
 import com.example.mymangaapp.mymangaapp.dto.common.PaginatedResponse;
 import com.example.mymangaapp.mymangaapp.dto.transgroup.response.TransGroupDetailsResponse;
+import com.example.mymangaapp.mymangaapp.dto.transgroup.response.TransGroupOfUserResponse;
 import com.example.mymangaapp.mymangaapp.dto.transgroup.response.TransGroupResponse;
 import com.example.mymangaapp.mymangaapp.dto.transgroup.response.TransGroupSummaryResponse;
-import com.example.mymangaapp.mymangaapp.entity.GroupCreationRequest;
-import com.example.mymangaapp.mymangaapp.entity.Role;
-import com.example.mymangaapp.mymangaapp.entity.TransGroup;
-import com.example.mymangaapp.mymangaapp.entity.User;
+import com.example.mymangaapp.mymangaapp.entity.*;
+import com.example.mymangaapp.mymangaapp.enums.GroupCreationRequestStatus;
+import com.example.mymangaapp.mymangaapp.enums.GroupJoinRequestStatus;
+import com.example.mymangaapp.mymangaapp.enums.MyGroupStatus;
 import com.example.mymangaapp.mymangaapp.enums.TransGroupStatus;
 import com.example.mymangaapp.mymangaapp.exception.AppException;
 import com.example.mymangaapp.mymangaapp.exception.ResponseCode;
+import com.example.mymangaapp.mymangaapp.mapper.MangaMapper;
 import com.example.mymangaapp.mymangaapp.mapper.TransGroupMapper;
-import com.example.mymangaapp.mymangaapp.repository.RoleRepository;
-import com.example.mymangaapp.mymangaapp.repository.TransGroupRepository;
-import com.example.mymangaapp.mymangaapp.repository.UserRepository;
+import com.example.mymangaapp.mymangaapp.repository.*;
+import com.example.mymangaapp.mymangaapp.security.utils.SecurityUtils;
 import com.example.mymangaapp.mymangaapp.service.storage.ObjectStorage;
 import com.example.mymangaapp.mymangaapp.service.storage.StorageService;
 import com.example.mymangaapp.mymangaapp.utils.StorageKeysUtils;
@@ -34,6 +35,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -44,8 +48,12 @@ public class TransGroupService {
     UserRepository userRepository;
     TransGroupRepository transGroupRepository;
     RoleRepository roleRepository;
+    GroupCreationRequestRepository groupCreationRequestRepository;
+    GroupJoinRequestRepository groupJoinRequestRepository;
+    MangaRepository mangaRepository;
 
     TransGroupMapper transGroupMapper;
+    MangaMapper mangaMapper;
 
     ObjectStorage objectStorage;
     StorageService storageService;
@@ -78,6 +86,61 @@ public class TransGroupService {
     }
 
 
+    // ------------------------------------chức năng cho user đã đăng nhập ----------------------------------//
+
+    // Chức năng lấy nhóm dịch mà user đang tham gia
+    @Transactional(readOnly = true)
+    public TransGroupOfUserResponse getMyGroup() {
+
+        // Nếu chưa đăng nhập thì tự ném UNAUTHENTICATED
+        // Frontend sẽ biết yêu cầu user đăng nhập
+        String currentUserId = SecurityUtils.getCurrentUserId();
+
+        User me = userRepository
+                .findWithGroupById(currentUserId)
+                .orElseThrow(() -> new AppException(ResponseCode.USER_NOT_FOUND));
+
+        // lấy nhóm user đang tham gia (ko phải leader nhé)
+        TransGroup myJoinedGroup = me.getTransGroup();
+
+        // check user đang là member của nhóm nào trước
+        if (myJoinedGroup != null && myJoinedGroup.getStatus().equals(TransGroupStatus.APPROVED)) {
+            return TransGroupOfUserResponse.builder()
+                    .transGroup(transGroupMapper.toTransGroupSummaryResponse(myJoinedGroup))
+                    .status(MyGroupStatus.MEMBER)
+                    .build();
+        }
+
+        // nếu ko phải member thì tìm tiếp xem có phải leader của nhóm ko
+        Optional<TransGroup> myGroupOpt = transGroupRepository
+                .findByLeaderIdAndStatus(currentUserId, TransGroupStatus.APPROVED);
+
+        // nếu user có leader của group nào thì trả về
+        if (myGroupOpt.isPresent()) {
+            return TransGroupOfUserResponse.builder()
+                    .transGroup(transGroupMapper.toTransGroupSummaryResponse(myGroupOpt.get()))
+                    .status(MyGroupStatus.LEADER)
+                    .build();
+        }
+
+        // nếu cũng ko phải leader nhóm nào thì tìm tiếp xem
+        // user có đang gửi yc tạo nhóm hay tham gia nhóm mà đang chờ duyệt không
+        // thì trả về response
+        if (groupCreationRequestRepository.existsByCreatorIdAndStatus(currentUserId, GroupCreationRequestStatus.PENDING) ||
+            groupJoinRequestRepository.existsByUserIdAndStatus(currentUserId, GroupJoinRequestStatus.PENDING)
+        ) {
+            return TransGroupOfUserResponse.builder()
+                    .status(MyGroupStatus.PENDING_REQUEST)
+                    .build();
+        }
+
+        // nếu ko phải tất cả trường hợp trên thì trả về ko tham gia nhóm dịch nào
+        return TransGroupOfUserResponse.builder()
+                .status(MyGroupStatus.NONE)
+                .build();
+    }
+
+
     // ----------------------------------- chức năng public (cho khách) -----------------------------------//
 
     // Lấy tất cả nhóm dịch đã được chấp thuận, public
@@ -103,7 +166,15 @@ public class TransGroupService {
                 .findWithDetailsById(id)
                 .orElseThrow(() -> new AppException(ResponseCode.TRANSGROUP_NOT_FOUND));
 
-        return transGroupMapper.toTransGroupDetailsResponse(transGroup);
+        List<Manga> translatedMangas = mangaRepository
+                .findAllByGroupId(id);
+
+        TransGroupDetailsResponse response = transGroupMapper.toTransGroupDetailsResponse(transGroup);
+        response.setTranslatedMangas(new HashSet<>(
+                translatedMangas.stream().map(mangaMapper::toMangaSummaryResponse).toList()
+        ));
+
+        return response;
     }
 
 

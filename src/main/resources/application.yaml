@@ -18,8 +18,8 @@ spring:
         open-in-view: false
     servlet:
         multipart:
-            max-file-size: 5MB
-            max-request-size: 150MB
+            max-file-size: 10MB
+            max-request-size: 300MB
     data:
         redis:
             host: ${REDIS_HOST:localhost}
@@ -60,3 +60,36 @@ app:
             password: ${INIT_USER3_PASSWORD}
     cors:
         allowed-origins: "http://localhost:5173, http://127.0.0.1:5173"
+
+#logging:
+    #level:
+        #root: INFO
+        #com.example.mymangaapp.mymangaapp: INFO
+        #org.springframework: WARN
+        #org.hibernate.SQL: WARN
+
+---
+#spring:
+    #config:
+        #activate:
+            #on-profile: prod
+
+#logging:
+    #level:
+        #root: INFO
+        #com.example.mymangaapp.mymangaapp: INFO
+        #org.springframework: WARN
+        #org.hibernate.SQL: WARN
+
+---
+#spring:
+    #config:
+        #activate:
+            #on-profile: dev
+
+#logging:
+    #level:
+        #root: INFO
+        #com.example.mymangaapp.mymangaapp: DEBUG
+        #org.springframework: WARN
+        #org.hibernate.SQL: WARN

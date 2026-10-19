@@ -1,10 +1,7 @@
 package com.example.mymangaapp.mymangaapp.mapper;
 
 import com.example.mymangaapp.mymangaapp.dto.transgroup.request.TransGroupUpdateRequest;
-import com.example.mymangaapp.mymangaapp.dto.transgroup.response.TransGroupDetailsResponse;
-import com.example.mymangaapp.mymangaapp.dto.transgroup.response.TransGroupManagementResponse;
-import com.example.mymangaapp.mymangaapp.dto.transgroup.response.TransGroupResponse;
-import com.example.mymangaapp.mymangaapp.dto.transgroup.response.TransGroupSummaryResponse;
+import com.example.mymangaapp.mymangaapp.dto.transgroup.response.*;
 import com.example.mymangaapp.mymangaapp.entity.TransGroup;
 import org.mapstruct.*;
 
@@ -15,6 +12,7 @@ public interface TransGroupMapper {
 
     TransGroupSummaryResponse toTransGroupSummaryResponse(TransGroup transGroup);
 
+    @Mapping(target = "translatedMangas", ignore = true)
     TransGroupDetailsResponse toTransGroupDetailsResponse(TransGroup transGroup);
 
     @Mapping(target = "canRemove", ignore = true)

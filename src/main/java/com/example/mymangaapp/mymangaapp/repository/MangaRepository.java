@@ -13,6 +13,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.lang.NonNull;
 
+import java.util.List;
 import java.util.Optional;
 
 public interface MangaRepository extends JpaRepository<Manga, String> {
@@ -33,6 +34,14 @@ public interface MangaRepository extends JpaRepository<Manga, String> {
    @EntityGraph(attributePaths = { "categories", "transGroups" })
    @NonNull
    Page<Manga> findAll(@NonNull Pageable pageable);
+
+   // Tìm tất cả manga mà nhóm này dịch
+   @Query("""
+            SELECT DISTINCT m FROM Manga m
+            JOIN m.transGroups tg
+            WHERE tg.id = :groupId
+   """)
+   List<Manga> findAllByGroupId(String groupId);
 
    // Admin list: join thêm ownerTransGroup / transGroups / categories để view dashboard chi tiết hơn
    @Query("SELECT m FROM Manga m")

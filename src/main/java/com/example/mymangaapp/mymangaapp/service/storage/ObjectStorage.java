@@ -35,7 +35,6 @@ public class ObjectStorage {
         s3Client.putObject(
                 PutObjectRequest.builder().bucket(bucket).key(key).contentType(contentType).build(),
                 RequestBody.fromBytes(data));
-        log.debug("Đã upload file");
     }
 
     public void copyFile(String sourceKey, String destinationKey, boolean deleteSource) {
@@ -43,7 +42,7 @@ public class ObjectStorage {
                 .sourceBucket(bucket).sourceKey(sourceKey)
                 .destinationBucket(bucket).destinationKey(destinationKey)
                 .build());
-        log.debug("Copy file thành công");
+        log.info("Copy file thành công");
 
         if (deleteSource) deleteFile(sourceKey);
         //return toPublicUrl(destinationKey);
@@ -51,7 +50,7 @@ public class ObjectStorage {
 
     public void deleteFile(String key) {
         s3Client.deleteObject(b -> b.bucket(bucket).key(key));
-        log.debug("Đã xoá file");
+        log.info("Đã xoá file");
     }
 
     /** Xóa các file dưới prefix có lastModified trước threshold. Trả về số file xóa thành công. */
@@ -74,7 +73,7 @@ public class ObjectStorage {
         }
         if (!batch.isEmpty()) deleted += deleteBatch(batch);
 
-        log.debug("Đã xoá {} files với prefix", deleted);
+        log.info("Đã xoá {} files với prefix", deleted);
     }
 
     public void deleteFiles(Collection<String> keys) {

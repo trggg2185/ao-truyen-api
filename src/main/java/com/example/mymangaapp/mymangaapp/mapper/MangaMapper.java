@@ -17,6 +17,7 @@ public interface MangaMapper {
     @Mapping(target = "transGroups", ignore = true)
     @Mapping(target = "categories", ignore = true)
     @Mapping(target = "chapters", ignore = true)
+    @Mapping(target = "coverImageUrl", ignore = true)
     @Mapping(target = "slug", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)

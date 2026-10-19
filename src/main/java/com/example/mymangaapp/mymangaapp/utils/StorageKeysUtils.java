@@ -18,6 +18,7 @@ public final class StorageKeysUtils {
     static String USER_PREFIX = "users/";
     static String GROUP_PREFIX = "groups/";
     static String MANGA_PREFIX = "mangas/";
+    static String CHAPTER_PREFIX = "chapter/";
 
     static String AVATAR_PREFIX = "avatars/";
     static String COVER_IMAGE_PREFIX = "cover/";
@@ -57,11 +58,15 @@ public final class StorageKeysUtils {
 
     // path r2 cho ảnh bìa của truyện: mangas/mangaId/cover/uuid.webp
     public static String mangaCover(String mangaId) {
-        return MANGA_PREFIX + mangaId + "/" + COVER_IMAGE_PREFIX + newFileName();
+        return mangaCoverPrefix(mangaId) + newFileName();
+    }
+
+    public static String mangaCoverPrefix(String mangaId) {
+        return MANGA_PREFIX + mangaId + "/" + COVER_IMAGE_PREFIX;
     }
 
     public static String chapterPrefix(String mangaId, String chapterId) {
-        return MANGA_PREFIX + mangaId + "/" + chapterId + "/";
+        return MANGA_PREFIX + mangaId + "/" + CHAPTER_PREFIX + chapterId + "/";
     }
 
     public static boolean isTmp(String key) {

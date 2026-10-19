@@ -10,8 +10,13 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.lang.NonNull;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
+import software.amazon.awssdk.core.exception.SdkClientException;
 import software.amazon.awssdk.core.exception.SdkException;
+import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
+import software.amazon.awssdk.services.s3.model.S3Exception;
 
 import java.io.IOException;
 import java.util.List;
@@ -108,6 +113,82 @@ public class StorageService {
         storage.put(key, bytes, ImageProcessor.OUTPUT_CONTENT_TYPE);
         log.info("Upload ảnh thành công!");
         return storage.toPublicUrl(key);
+    }
+
+    /**
+     * Chuyển 1 file duy nhất từ tmp/ sang vị trí chính thức (Dùng cho Ảnh Cover Manga, Avatar User...)
+     */
+    public String promoteTmpFile(String tmpUrl, String destKey) {
+        List<String> publicUrls = promoteTmpFiles(List.of(tmpUrl), List.of(destKey));
+        return publicUrls.getFirst();
+    }
+
+    /**
+     * Chuyển danh sách file từ tmp/ sang vị trí chính thức (Dùng cho các trang Ảnh Chapter)
+     */
+    public List<String> promoteTmpFiles(List<String> tmpUrls, List<String> destKeys) {
+        if (tmpUrls.size() != destKeys.size()) {
+            throw new IllegalArgumentException("Số lượng tmpUrls và destKeys không khớp nhau");
+        }
+
+        // 1. Validate & Resolve tmp keys
+        List<String> tmpKeys = resolveTmpKeys(tmpUrls);
+
+        // 2. Đăng ký dọn rác trên R2 nếu Transaction rollback
+        registerDeleteOnRollback(destKeys);
+
+        // 3. Tiến hành copy file
+        try {
+            for (int i = 0; i < tmpKeys.size(); i++) {
+                storage.copyFile(tmpKeys.get(i), destKeys.get(i), false);
+            }
+        } catch (NoSuchKeyException e) {
+            log.warn("File tmp không còn tồn tại (có thể đã bị dọn): {}", e.getMessage());
+            throw new AppException(ResponseCode.FILE_INVALID);
+        } catch (SdkClientException e) {
+            log.error("Không kết nối được R2 khi copy file", e);
+            throw new AppException(ResponseCode.STORAGE_SERVICE_UNAVAILABLE);
+        } catch (S3Exception e) {
+            log.error("R2 trả lỗi khi copy file", e);
+            throw new AppException(ResponseCode.STORAGE_SERVICE_ERROR);
+        }
+
+        // 4. Trả về public URLs
+        return destKeys.stream().map(storage::toPublicUrl).toList();
+    }
+
+    // Url -> key, và chỉ chấp nhận file nằm trong tmp/
+    private List<String> resolveTmpKeys(List<String> tmpUrls) {
+        return tmpUrls.stream()
+                .map(url -> {
+                    String key = storage.toKey(url);
+                    if (!StorageKeysUtils.isTmp(key)) {
+                        throw new AppException(ResponseCode.FILE_INVALID);
+                    }
+                    return key;
+                })
+                .toList();
+    }
+
+    private void registerDeleteOnRollback(List<String> keys) {
+        // Kiểm tra xem luồng hiện tại có đang nằm trong 1 Transaction thật hay không
+        if (!TransactionSynchronizationManager.isActualTransactionActive()) {
+            return;
+        }
+
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCompletion(int status) {
+                if (status == STATUS_COMMITTED) return;
+
+                try {
+                    storage.deleteFiles(keys);
+                    log.warn("Transaction không commit, đã dọn {} file trên R2", keys.size());
+                } catch (Exception e) {
+                    log.error("Không dọn được {} file rác trên R2, key đầu tiên {}", keys.size(), keys.getFirst(), e);
+                }
+            }
+        });
     }
 
 }

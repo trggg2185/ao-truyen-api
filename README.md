@@ -27,6 +27,8 @@ or create a translation group, and gives admins review and management tools.
 - AWS SDK S3 2.29.15 (Cloudflare R2)
 - Slugify 2.4, Thumbnailator, WebP ImageIO
 - Maven Wrapper (`mvnw` / `mvnw.cmd`)
+- Structured API request logging with request ID/MDC; readable console logs in
+  development and JSON logs in the `prod` profile
 
 ## Requirements
 
@@ -79,8 +81,9 @@ Build and test:
 .\mvnw.cmd test
 ```
 
-The only test is a Spring context-load smoke test, so running it requires the external
-configuration above (DB, Redis, R2, initial passwords) to be available.
+The project includes an API logging filter unit test and a Spring context-load smoke
+test. The context test requires the external configuration above (DB, Redis, R2,
+initial passwords) to be available.
 
 ## Project structure
 
@@ -88,7 +91,7 @@ configuration above (DB, Redis, R2, initial passwords) to be available.
 src/main/java/com/example/mymangaapp/mymangaapp/
   annotation/       @RateLimit
   aop/              Rate-limit aspect
-  configuration/    Startup seeding (InitApplicationConfig)
+  configuration/    Startup seeding, async executor, MDC task decorator
   constant/         Role name constants
   controller/       REST controllers
   dto/
@@ -106,16 +109,18 @@ src/main/java/com/example/mymangaapp/mymangaapp/
   entity/           JPA entities
   enums/            Domain enums
   exception/        AppException, ResponseCode, GlobalExceptionHandler
+  filter/           API request/response logging filter
   mapper/           MapStruct mappers
   repository/       Spring Data repositories
   scheduler/        View-flush and storage-cleanup jobs
   security/         JWT, filters, CORS, Redis, R2, password, rate-limit config
   service/          Business logic (incl. service/storage/)
-  utils/            HTTP and storage-key helpers
+  utils/            HTTP, logging sanitization, and storage-key helpers
 
 src/main/resources/
   application.yaml  Runtime configuration
   rate_limit.lua    Atomic Redis fixed-window rate-limit script
+  logback-spring.xml  Dev console/prod JSON async logging configuration
 ```
 
 The servlet context path is `/mymangaapp` and the server port is `8080`, so the local
@@ -173,6 +178,16 @@ Public write routes are the `/auth/**` operations. All other routes require a to
 and `/admin/**` requires the `ADMIN` role. Business ownership rules (self-or-admin,
 group leader, manga group membership) are enforced in services with `@PreAuthorize`.
 
+### API logging
+
+`ApiLoggingFilter` runs first for every request. It validates or generates
+`X-Request-ID`, returns that ID in the response header, adds request metadata to MDC,
+and logs method, path, query, status, duration, user ID, client IP, user-agent, and
+error message. Successful requests are `INFO`, 4xx responses are `WARN`, and 5xx
+responses are `ERROR` with the exception when available. Passwords, JWTs, refresh
+tokens, secrets, and request/response bodies are never logged. MDC is cleared after
+each request and propagated to async tasks through `MdcTaskDecorator`.
+
 ### Endpoint groups
 
 ```text
@@ -190,6 +205,7 @@ GET    /mangas           GET  /mangas/{id}
 POST   /mangas           PATCH /mangas/{mangaId}
 DELETE /transgroups/{groupId}/mangas/{mangaId}
 DELETE /mangas/{mangaId}/transgroups/{groupId}
+GET    /mangas/{mangaId}/management
 GET    /transgroups/{groupId}/mangas
 GET    /admin/mangas
 
@@ -234,12 +250,11 @@ strings except `Category`, which uses an auto-increment `Long`.
 - `Role` / `Permission` — string-named; joined through `user_roles` and
   `role_permissions`.
 - `TransGroup` — leader, member users, status (`APPROVED`/`DELETED`), slug generated,
-  and optional `coverImageUrl`.
-  from the name, and many-to-many translated manga. The leader is not counted as a
+  optional `coverImageUrl`, and many-to-many translated manga. The leader is not counted as a
   member.
 - `Manga` — name, generated slug, author, optional `coverImageUrl`, status, description,
-  many-to-many categories
-  and translation groups, and one-to-many chapters (`@OrderBy chapterIndex ASC`,
+  many-to-many categories and translation groups, and one-to-many chapters
+  (`@OrderBy chapterIndex ASC`,
   cascade + orphan removal).
 - `Chapter` — unique `(manga_id, chapter_index)`, buffered `views`, one-to-many pages
   ordered by `pageNumber` (cascade + orphan removal).
@@ -318,6 +333,9 @@ For deeper contributor guidance, see [`AGENTS.md`](AGENTS.md).
 - `MangaResponse.transGroupsId` is a list of `TransGroupSummaryResponse`, not IDs,
   despite its name. `MangaDetailsResponse` does not include chapters; fetch them from
   `/mangas/{mangaId}/chapters`.
+- `MangaManagementResponse` is a separate authenticated response for editing a manga;
+  its `transGroups[].canRemove` flag controls whether the current leader may remove
+  that group from the manga.
 - The scheduled failed-upload cleanup method is a placeholder.
 - Rate-limit evaluation fails open if Redis evaluation throws.
 - The existing smoke test depends on a fully provisioned external environment.

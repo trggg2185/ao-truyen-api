@@ -2,13 +2,10 @@ package com.example.mymangaapp.mymangaapp.controller;
 
 import com.example.mymangaapp.mymangaapp.annotation.RateLimit;
 import com.example.mymangaapp.mymangaapp.dto.transgroup.request.TransGroupUpdateRequest;
-import com.example.mymangaapp.mymangaapp.dto.transgroup.response.TransGroupDetailsResponse;
-import com.example.mymangaapp.mymangaapp.dto.transgroup.response.TransGroupSummaryResponse;
+import com.example.mymangaapp.mymangaapp.dto.transgroup.response.*;
 import com.example.mymangaapp.mymangaapp.enums.LimitType;
 import com.example.mymangaapp.mymangaapp.dto.common.ApiResponse;
 import com.example.mymangaapp.mymangaapp.dto.common.PaginatedResponse;
-import com.example.mymangaapp.mymangaapp.dto.transgroup.response.TransGroupResponse;
-import com.example.mymangaapp.mymangaapp.dto.transgroup.response.DeleteTransGroupResponse;
 import com.example.mymangaapp.mymangaapp.enums.TransGroupStatus;
 import com.example.mymangaapp.mymangaapp.exception.ResponseCode;
 import com.example.mymangaapp.mymangaapp.service.TransGroupService;
@@ -25,6 +22,17 @@ import org.springframework.web.bind.annotation.*;
 public class TransGroupController {
 
     TransGroupService transGroupService;
+
+
+    // -----------------------------------endpoint cho user đã đăng nhập ----------------------------------//
+
+    @GetMapping("/users/me/transgroups")
+    // chưa đánh rate limit
+    public ApiResponse<TransGroupOfUserResponse> getMyGroup() {
+        return ApiResponse.<TransGroupOfUserResponse>builder()
+                .result(transGroupService.getMyGroup())
+                .build();
+    }
 
 
     // ----------------------------------- endpoint public (cho khách) -----------------------------------//
@@ -45,6 +53,7 @@ public class TransGroupController {
     }
 
     @GetMapping("/transgroups/{id}")
+    // chưa đánh rate limit
     public ApiResponse<TransGroupDetailsResponse> getGroupById(@PathVariable @NonNull String id) {
         TransGroupDetailsResponse response = transGroupService.getGroupById(id);
 
@@ -72,7 +81,7 @@ public class TransGroupController {
     }
 
 
-    // ----------------------------------- endpoint cho leaer và admin -----------------------------//
+    // ----------------------------------- endpoint cho leader và admin -----------------------------//
 
     @DeleteMapping("/transgroups/{id}")
     @RateLimit(capacity = 10, limitType = LimitType.USER_ID)

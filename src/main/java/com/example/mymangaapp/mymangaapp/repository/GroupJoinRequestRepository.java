@@ -34,6 +34,8 @@ public interface GroupJoinRequestRepository extends JpaRepository<GroupJoinReque
 
     boolean existsByTransGroupIdAndUserIdAndStatus(String groupId, String userId, GroupJoinRequestStatus status);
 
+    boolean existsByUserIdAndStatus(String userId, GroupJoinRequestStatus status);
+
     @EntityGraph(attributePaths = { "transGroup", "user" })
     Optional<GroupJoinRequest> findByTransGroupIdAndUserIdAndStatus(
             String groupId,
