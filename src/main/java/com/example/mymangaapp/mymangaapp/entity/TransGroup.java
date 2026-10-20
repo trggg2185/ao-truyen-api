@@ -3,6 +3,7 @@ package com.example.mymangaapp.mymangaapp.entity;
 import java.util.Set;
 
 import com.example.mymangaapp.mymangaapp.enums.TransGroupStatus;
+import com.example.mymangaapp.mymangaapp.utils.SlugUtils;
 import com.github.slugify.Slugify;
 import jakarta.persistence.*;
 
@@ -41,7 +42,7 @@ public class TransGroup extends BaseEntity {
     String name;
 
     // bảng transgroup bổ sung thêm trường slug
-    @Column(length = 100, nullable = false)
+    @Column(length = 100, nullable = false, unique = true)
     String slug;
 
     @Column(length = 500)
@@ -54,11 +55,7 @@ public class TransGroup extends BaseEntity {
     @PrePersist
     @PreUpdate
     public void generateSlug() {
-        if (this.name == null || this.name.isBlank()) {
-            return;
-        }
-
-        this.slug = new Slugify().slugify(this.name);
+        this.slug = SlugUtils.generateSlug(this.name);
     }
 
     @Column(length = 300)

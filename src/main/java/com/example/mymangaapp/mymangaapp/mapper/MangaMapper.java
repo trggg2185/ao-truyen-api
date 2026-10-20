@@ -7,7 +7,6 @@ import com.example.mymangaapp.mymangaapp.dto.manga.response.MangaManagementRespo
 import com.example.mymangaapp.mymangaapp.dto.manga.response.MangaResponse;
 import com.example.mymangaapp.mymangaapp.dto.manga.response.MangaSummaryResponse;
 import com.example.mymangaapp.mymangaapp.entity.Manga;
-import com.example.mymangaapp.mymangaapp.entity.TransGroup;
 import org.mapstruct.*;
 
 @Mapper(componentModel = "spring", uses = {CategoryMapper.class, ChapterMapper.class})
@@ -19,6 +18,7 @@ public interface MangaMapper {
     @Mapping(target = "chapters", ignore = true)
     @Mapping(target = "coverImageUrl", ignore = true)
     @Mapping(target = "slug", ignore = true)
+    @Mapping(target = "sequenceNumber", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
     /*
@@ -33,11 +33,6 @@ public interface MangaMapper {
     @Mapping(target = "transGroups", source = "transGroups")
     MangaResponse toMangaResponse(Manga manga);
 
-    // Để mapper tự map từng phần tử transGroup thành transGroupId
-    default String mapTransGroupToId(TransGroup transGroup) {
-        return (transGroup != null) ? transGroup.getId() : null;
-    }
-
     MangaSummaryResponse toMangaSummaryResponse(Manga manga);
 
     MangaDetailsResponse toMangaDetailsResponse(Manga manga);
@@ -50,6 +45,7 @@ public interface MangaMapper {
     @Mapping(target = "transGroups", ignore = true)
     @Mapping(target = "chapters", ignore = true)
     @Mapping(target = "slug", ignore = true)
+    @Mapping(target = "sequenceNumber", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)

@@ -1,5 +1,6 @@
 package com.example.mymangaapp.mymangaapp.service;
 
+import com.example.mymangaapp.mymangaapp.constant.SequenceCounterConstants;
 import com.example.mymangaapp.mymangaapp.dto.manga.request.MangaCreationRequest;
 import com.example.mymangaapp.mymangaapp.dto.manga.request.MangaUpdateRequest;
 import com.example.mymangaapp.mymangaapp.dto.manga.response.MangaDetailsResponse;
@@ -23,6 +24,7 @@ import com.example.mymangaapp.mymangaapp.repository.TransGroupRepository;
 import com.example.mymangaapp.mymangaapp.security.utils.SecurityUtils;
 import com.example.mymangaapp.mymangaapp.service.storage.ObjectStorage;
 import com.example.mymangaapp.mymangaapp.service.storage.StorageService;
+import com.example.mymangaapp.mymangaapp.utils.SlugUtils;
 import com.example.mymangaapp.mymangaapp.utils.StorageKeysUtils;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -47,6 +49,7 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
+@Transactional(readOnly = true)
 public class MangaService {
 
     MangaRepository mangaRepository;
@@ -59,6 +62,7 @@ public class MangaService {
     ObjectStorage objectStorage;
 
     StorageService storageService;
+    SequenceCounterService sequenceCounterService;
 
 
     // ----------------------------chức năng dành cho leader nhóm ---------------------------------//
@@ -99,9 +103,18 @@ public class MangaService {
         manga.setCategories(new HashSet<>(categories));
         manga.setTransGroups(new HashSet<>(transGroups));
 
+        // Lấy số thứ tự của truyện
+        long sequenceNumber = sequenceCounterService.next(SequenceCounterConstants.MANGA);
+
+        // Tạo slug = name-number
+        String slug = SlugUtils.generateSlug(manga.getName(), sequenceNumber);
+
+        manga.setSequenceNumber(sequenceNumber);
+        manga.setSlug(slug);
+
         manga = mangaRepository.save(manga);
 
-        if (request.getCoverImageUrl() != null && request.getCoverImageUrl().isEmpty()) {
+        if (request.getCoverImageUrl() != null && !request.getCoverImageUrl().isEmpty()) {
             // copy từ tmp sang mangas/mangaId/cover/anh-bia.webp
             String coverDestKey = StorageKeysUtils.mangaCover(manga.getId());
 
@@ -123,6 +136,12 @@ public class MangaService {
                 .orElseThrow(() -> new AppException(ResponseCode.MANGA_NOT_FOUND));
 
         mangaMapper.updateMangaFromRequest(manga, request);
+
+        // Nếu tên truyệnthay đổi thì set lại slug
+        if (request.getName() != null && !request.getName().isEmpty()) {
+            String slug = SlugUtils.generateSlug(request.getName(), manga.getSequenceNumber());
+            manga.setSlug(slug);
+        }
 
         if (request.getCategoryIds() != null && !request.getCategoryIds().isEmpty()) {
             List<Category> categories = categoryRepository.findAllById(request.getCategoryIds());
@@ -168,7 +187,6 @@ public class MangaService {
 
     // Đây là endpoint dành cho leader nhóm để get manga ra chỉnh sửa
     // trả về response khác so với response trên hàm getMangaById
-    @Transactional(readOnly = true)
     public MangaManagementResponse getMangaForManagementById(@NonNull String mangaId) {
 
         String currentUserId = SecurityUtils.getCurrentUserId();
@@ -235,7 +253,6 @@ public class MangaService {
     // -------------------------chức năng chỉ dành cho admin --------------------------------//
 
     // chỉ dành cho admin
-    @Transactional(readOnly = true)
     public PaginatedResponse<MangaSummaryResponse> getMangas(
             MangaStatus status, int page,
             int size, String sortBy
@@ -265,7 +282,6 @@ public class MangaService {
     // đây là khi họ vào trang home của web
     // sẽ lấy tất cả các manga có phân trang, những chỉ lấy với
     // chút thông tin của manga như: name, categories, description, transgroups
-    @Transactional(readOnly = true)
     public PaginatedResponse<MangaResponse> getMangas(int page, int size, String sortBy) {
         
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, sortBy));
@@ -281,7 +297,6 @@ public class MangaService {
     // đây là endpoint khi user vào trang của nhóm dịch
     // thì lấy tất cả các bộ truyện mà nhóm đang tham gia dịch
     // cả dịch chính lẫn phụ
-    @Transactional(readOnly = true)
     public PaginatedResponse<MangaSummaryResponse> getMangasByGroupId(
             @NonNull String groupId, int page,
             int size, @NonNull String sortBy

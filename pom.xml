@@ -134,7 +134,14 @@
 		<dependency>
 			<groupId>com.github.slugify</groupId>
 			<artifactId>slugify</artifactId>
-			<version>2.4</version>
+			<version>3.0.7</version> <!-- Kiểm tra phiên bản mới nhất trên Maven Central -->
+		</dependency>
+
+		<!-- chuyển đổi các ký tự Unicode sang dạng ASCII gần nhất dùng cho slugify github -->
+		<dependency>
+			<groupId>com.ibm.icu</groupId>
+			<artifactId>icu4j</artifactId>
+			<version>75.1</version> <!-- Kiểm tra phiên bản mới nhất -->
 		</dependency>
 
 		<!-- Thumbnailator cho xử lý JavaImageIO -->

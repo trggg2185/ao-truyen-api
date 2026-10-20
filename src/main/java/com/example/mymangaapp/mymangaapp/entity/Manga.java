@@ -5,7 +5,6 @@ import java.util.Set;
 
 import com.example.mymangaapp.mymangaapp.enums.MangaStatus;
 
-import com.github.slugify.Slugify;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -18,6 +17,12 @@ import lombok.experimental.SuperBuilder;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 @SuperBuilder
 @Entity
+@Table(
+        name = "manga",
+        uniqueConstraints = {
+                @UniqueConstraint(name = "uk_manga_slug", columnNames = "slug") // Đặt tên cho constraint
+        }
+)
 public class Manga extends BaseEntity {
 
     @Id
@@ -35,16 +40,12 @@ public class Manga extends BaseEntity {
     @Column(length = 500)
     String coverImageUrl;
 
-    // method này luôn chạy trc khi insert hoặc update manga, để tự động tạo slug từ name
-    @PrePersist
-    @PreUpdate
-    public void generateSlug() {
-        if (this.name == null || this.name.isBlank()) {
-            return;
-        }
+    // Sô thứ tự của truyện, được tạo sẵn lúc tạo truyện, kothể update
+    @Column(nullable = false, updatable = false)
+    Long sequenceNumber;
 
-        this.slug = new Slugify().slugify(this.name);
-    }
+    // ko nên generate slug bằng prepersist và preupdate
+    // ta sẽ xử lý trong service
 
     // Quan hệ với bảng thể loại, 1 manga có nhiều thể loại, 1 thể loại thuộc về nhiều manga
     @ManyToMany(fetch = FetchType.LAZY)

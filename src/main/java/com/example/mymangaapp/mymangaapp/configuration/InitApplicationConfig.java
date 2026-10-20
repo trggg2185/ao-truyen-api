@@ -3,8 +3,8 @@ package com.example.mymangaapp.mymangaapp.configuration;
 import java.util.List;
 import java.util.Set;
 
-import com.example.mymangaapp.mymangaapp.entity.Category;
-import com.example.mymangaapp.mymangaapp.entity.TransGroup;
+import com.example.mymangaapp.mymangaapp.constant.SequenceCounterConstants;
+import com.example.mymangaapp.mymangaapp.entity.*;
 import com.example.mymangaapp.mymangaapp.enums.TransGroupStatus;
 import com.example.mymangaapp.mymangaapp.exception.AppException;
 import com.example.mymangaapp.mymangaapp.exception.ResponseCode;
@@ -16,9 +16,6 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
-import com.example.mymangaapp.mymangaapp.entity.Permission;
-import com.example.mymangaapp.mymangaapp.entity.Role;
-import com.example.mymangaapp.mymangaapp.entity.User;
 import com.example.mymangaapp.mymangaapp.repository.PermissionRepository;
 import com.example.mymangaapp.mymangaapp.repository.RoleRepository;
 import com.example.mymangaapp.mymangaapp.repository.UserRepository;
@@ -54,7 +51,8 @@ public class InitApplicationConfig {
             RoleRepository roleRepository,
             PermissionRepository permissionRepository,
             CategoryRepository categoryRepository,
-            TransGroupRepository transGroupRepository
+            TransGroupRepository transGroupRepository,
+            SequenceCounterRepository sequenceCounterRepository
     ) {
         return args -> {
             log.info("................Init application starts...............");
@@ -114,7 +112,7 @@ public class InitApplicationConfig {
                         Category.builder().name("Drama").description("Drama đau tim").build()
                 );
                 categoryRepository.saveAll(categories);
-                log.info("Create default categories successfully!");
+                log.info("Tạo các thể loại truyện mặc định thành công!");
             }
 
             // Khởi tạo 1 admin và 3 user
@@ -148,7 +146,7 @@ public class InitApplicationConfig {
                         .build();
 
                 userRepository.saveAll(List.of(admin, user1, user2, user3));
-                log.info("Create users successfully!");
+                log.info("Tạo các user mặc định thành công!");
             }
 
             if (transGroupRepository.count() == 0) {
@@ -165,12 +163,14 @@ public class InitApplicationConfig {
                         .build();
 
                 transGroupRepository.save(transGroup);
-
-                // ko set transgroup cho leader nữa
-                // vì leader ko phải member
-                // transgroup của user chỉ là thành viên thì mới set
-                userRepository.save(leader);
+                log.info("Tạo nhóm dịch của admin thành công!");
             }
+
+            List<SequenceCounter> scs = List.of(
+                    SequenceCounter.builder().name(SequenceCounterConstants.MANGA).nextValue(1L).build(),
+                    SequenceCounter.builder().name(SequenceCounterConstants.TRANSGROUP).nextValue(1L).build()
+            );
+            sequenceCounterRepository.saveAll(scs);
 
             log.info(".................Init application ends...................");
         };

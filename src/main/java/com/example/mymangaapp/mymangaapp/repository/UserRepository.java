@@ -34,6 +34,9 @@ public interface UserRepository extends JpaRepository<User, String> {
     @EntityGraph(attributePaths = { "transGroup" })
     Optional<User> findWithGroupById(String id);
 
+    @EntityGraph(attributePaths = { "transGroup" })
+    Optional<User> findWithGroupByUsername(String username);
+
     // Khi lấy user, lấy luôn roles, và khi lấy các roles, lấy luôn các permissions
     @EntityGraph(attributePaths = { "roles", "roles.permissions", "transGroup" })
     Optional<User> findWithDetailsByUsername(@NonNull String username);

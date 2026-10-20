@@ -2,6 +2,7 @@ package com.example.mymangaapp.mymangaapp.mapper;
 
 import com.example.mymangaapp.mymangaapp.dto.auth.request.RegisterRequest;
 import com.example.mymangaapp.mymangaapp.dto.user.response.CurrentUserResponse;
+import com.example.mymangaapp.mymangaapp.dto.user.response.PublicUserProfileResponse;
 import com.example.mymangaapp.mymangaapp.dto.user.response.UserSummaryResponse;
 import org.mapstruct.BeanMapping;
 import org.mapstruct.Mapper;
@@ -70,5 +71,8 @@ public interface UserMapper {
     UserSummaryResponse toUserSummaryResponse(User user);
 
     CurrentUserResponse toCurrentUserResponse(User user);
+
+    @Mapping(target = "transGroup", ignore = true)
+    PublicUserProfileResponse toPublicUserProfileResponse(User user);
 
 }

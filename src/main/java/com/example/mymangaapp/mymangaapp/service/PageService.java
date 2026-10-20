@@ -3,14 +3,13 @@ package com.example.mymangaapp.mymangaapp.service;
 import com.example.mymangaapp.mymangaapp.dto.chapter.response.PageResponse;
 import com.example.mymangaapp.mymangaapp.entity.Chapter;
 import com.example.mymangaapp.mymangaapp.entity.Page;
-import com.example.mymangaapp.mymangaapp.exception.AppException;
-import com.example.mymangaapp.mymangaapp.exception.ResponseCode;
 import com.example.mymangaapp.mymangaapp.mapper.PageMapper;
-import com.example.mymangaapp.mymangaapp.repository.ChapterRepository;
+import com.example.mymangaapp.mymangaapp.repository.PageRepository;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Sort;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 
@@ -23,7 +22,7 @@ import java.util.stream.IntStream;
 @Slf4j
 public class PageService {
 
-    ChapterRepository chapterRepository;
+    PageRepository pageRepository;
 
     PageMapper pageMapper;
 
@@ -32,14 +31,13 @@ public class PageService {
 
     // lấy tất cả các files ảnh của chapter theo id (tức là user đọc 1 chương truyện)
     // ==> cx public luôn
-    public List<PageResponse> getAllPagesByChapterId(@NonNull String chapterId) {
+    public List<PageResponse> getAllPagesByChapterId(
+            @NonNull String chapterId, @NonNull String sortBy
+    ) {
 
-        Chapter chapter = chapterRepository
-                .findWithPagesById(chapterId)
-                .orElseThrow(() -> new AppException(ResponseCode.CHAPTER_NOT_FOUND));
+        List<Page> pages = pageRepository.findAllByChapterId(chapterId, Sort.by(Sort.Direction.ASC, sortBy));
 
-        return chapter.getPages()
-                .stream()
+        return pages.stream()
                 .map(pageMapper::toPageResponse)
                 .toList();
     }

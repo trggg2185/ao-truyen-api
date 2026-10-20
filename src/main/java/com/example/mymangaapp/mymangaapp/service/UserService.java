@@ -3,13 +3,19 @@ package com.example.mymangaapp.mymangaapp.service;
 import java.time.Instant;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 import com.example.mymangaapp.mymangaapp.constant.RoleConstants;
 import com.example.mymangaapp.mymangaapp.dto.user.request.UserPasswordRequest;
 import com.example.mymangaapp.mymangaapp.dto.common.PaginatedResponse;
 import com.example.mymangaapp.mymangaapp.dto.user.response.CurrentUserResponse;
+import com.example.mymangaapp.mymangaapp.dto.user.response.PublicUserProfileResponse;
 import com.example.mymangaapp.mymangaapp.dto.user.response.UserSummaryResponse;
+import com.example.mymangaapp.mymangaapp.entity.TransGroup;
+import com.example.mymangaapp.mymangaapp.enums.TransGroupStatus;
+import com.example.mymangaapp.mymangaapp.mapper.TransGroupMapper;
+import com.example.mymangaapp.mymangaapp.repository.TransGroupRepository;
 import com.example.mymangaapp.mymangaapp.security.utils.SecurityUtils;
 import com.example.mymangaapp.mymangaapp.service.storage.ObjectStorage;
 import com.example.mymangaapp.mymangaapp.service.storage.StorageService;
@@ -44,19 +50,49 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
+@Transactional(readOnly = true)
 public class UserService {
 
     UserRepository userRepository;
     RoleRepository roleRepository;
+    TransGroupRepository transGroupRepository;
 
     PasswordEncoder passwordEncoder;
 
     // Map từ đối tượng này sang đối tượng khác nhanh chóng
     UserMapper userMapper;
+    TransGroupMapper transGroupMapper;
 
     ObjectStorage objectStorage;
 
     StorageService storageService;
+
+
+    // ---------------------------------- chức năng cho khách ---------------------------------------------------- //
+
+    public PublicUserProfileResponse getUserProfile(@NonNull String username) {
+
+        User user = userRepository
+                .findWithGroupByUsername(username)
+                .orElseThrow(() -> new AppException(ResponseCode.USER_NOT_FOUND));
+
+        PublicUserProfileResponse response = userMapper.toPublicUserProfileResponse(user);
+
+        TransGroup joinedGroup = user.getTransGroup();
+
+        if (joinedGroup != null && joinedGroup.getStatus().equals(TransGroupStatus.APPROVED)) {
+            response.setTransGroup(transGroupMapper.toTransGroupSummaryResponse(user.getTransGroup()));
+        }
+
+        Optional<TransGroup> userGroupOpt = transGroupRepository
+                .findByLeaderIdAndStatus(user.getId(), TransGroupStatus.APPROVED);
+
+        userGroupOpt.ifPresent(transGroup ->
+                response.setTransGroup(transGroupMapper.toTransGroupSummaryResponse(transGroup)));
+
+        return response;
+    }
+
 
     // --------------------------------- chức năng cho user đã đăng nhập đây -----------------------------------------  //
 

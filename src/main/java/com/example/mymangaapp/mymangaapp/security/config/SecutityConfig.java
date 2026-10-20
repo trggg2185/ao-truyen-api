@@ -1,5 +1,6 @@
 package com.example.mymangaapp.mymangaapp.security.config;
 
+import com.example.mymangaapp.mymangaapp.constant.RoleConstants;
 import com.example.mymangaapp.mymangaapp.security.jwt.JwtAuthenticationEntryPoint;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -48,11 +49,10 @@ public class SecutityConfig {
             "/chapters/{id}/pages", // lấy các ảnh của 1 chapter
             "/categories", // lấy tất cả các thể loại
             "/categories/{id}", // lấy thể loại theo id
+            "/users/{username}" // lấy thông tin user theo username
     };
 
     static String ADMIN_ENDPOINTS = "/admin/**";
-
-    static String ADMIN = "ADMIN";
 
     @Bean
     SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
@@ -64,7 +64,7 @@ public class SecutityConfig {
                 .authorizeHttpRequests(request -> request
                         .requestMatchers(HttpMethod.POST, POST_PUBLIC_ENDPOINTS).permitAll()
                         .requestMatchers(HttpMethod.GET, GET_PUBLIC_ENDPOINTS).permitAll()
-                        .requestMatchers(ADMIN_ENDPOINTS).hasRole(ADMIN)
+                        .requestMatchers(ADMIN_ENDPOINTS).hasRole(RoleConstants.ADMIN)
                         .anyRequest().authenticated())
                 .exceptionHandling(exception -> exception
                         .authenticationEntryPoint(jwtAuthenticationEntryPoint))

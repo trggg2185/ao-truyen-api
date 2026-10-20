@@ -42,15 +42,18 @@ public enum ResponseCode {
 
     SUCCESS("0000", "Thành công!", HttpStatus.OK),
 
-    // ===================== 1xxx - AUTHENTICATION =====================
+
+    // ======================================== 1xxx - AUTHENTICATION ===============================================
     UNAUTHENTICATED("1001", "Chưa được xác thực!", HttpStatus.UNAUTHORIZED),
     PASSWORD_INCORRECT("1002", "Mật khẩu không chính xác!", HttpStatus.UNAUTHORIZED),
 
-    // ===================== 2xxx - AUTHORIZATION =====================
+
+    // ========================================= 2xxx - AUTHORIZATION ===============================================
     UNAUTHORIZED("2001", "Không có quyền!", HttpStatus.FORBIDDEN),
     CANNOT_MODIFY_ADMIN("2002", "Không thể thao tác lên admin khác!", HttpStatus.FORBIDDEN),
 
-    // ===================== 3xxx - VALIDATION =====================
+
+    // ========================================== 3xxx - VALIDATION ==================================================
     // --- Chung ---
     FIELD_VALUE_INVALID("3001", "Giá trị trường không hợp lệ!", HttpStatus.BAD_REQUEST),
 
@@ -104,7 +107,8 @@ public enum ResponseCode {
     FILE_REQUIRED("3701", "File không được để trống!", HttpStatus.BAD_REQUEST),
     FILE_SIZE_INVALID("3702", "Kích thước file quá lớn!", HttpStatus.BAD_REQUEST),
 
-    // ===================== 4xxx - RESOURCE (NOT FOUND) =====================
+
+    // =============================================== 4xxx - RESOURCE (NOT FOUND) =====================================
     // --- User ---
     USER_NOT_FOUND("4101", "Người dùng không tồn tại!", HttpStatus.NOT_FOUND),
 
@@ -126,7 +130,11 @@ public enum ResponseCode {
     // --- Category ---
     CATEGORY_NOT_FOUND("4601", "Thể loại không tồn tại!", HttpStatus.NOT_FOUND),
 
-    // ===================== 5xxx - BUSINESS =====================
+    // --- SequenceCounter ----
+    SEQUENCE_COUNTER_NOT_FOUND("4701", "Bộ đếm không tồn tại", HttpStatus.NOT_FOUND),
+
+
+    // ============================================ 5xxx - BUSINESS =================================================
     // --- Chung ---
     DATA_INTEGRITY_VIOLATION("5001", "Dữ liệu vi phạm ràng buộc!", HttpStatus.BAD_REQUEST),
 
@@ -164,11 +172,13 @@ public enum ResponseCode {
     FILE_COPY_FAILED("5703", "Copy file thất bại!", HttpStatus.BAD_REQUEST),
     FILE_DELETE_FAILED("5704", "Xoá file thất bại!", HttpStatus.BAD_REQUEST),
 
-    // ===================== 6xxx - REQUEST =====================
+
+    // ==================================================== 6xxx - REQUEST ============================================
     RATE_LIMIT_EXCEEDED("6001", "Đạt giới hạn thao tác, vui lòng thử lại sau!", HttpStatus.TOO_MANY_REQUESTS),
     METHOD_NOT_ALLOWED("6002", "Phương thức không được phép!", HttpStatus.METHOD_NOT_ALLOWED),
 
-    // ===================== 9xxx - INTERNAL =====================
+
+    // ===================================================== 9xxx - INTERNAL ==========================================
     // --- Chung ---
     UNCATEGORIZED_ERROR("9001", "Lỗi không xác định!", HttpStatus.INTERNAL_SERVER_ERROR),
     ENUM_KEY_INVALID("9002", "Enum key không hợp lệ!", HttpStatus.INTERNAL_SERVER_ERROR),
