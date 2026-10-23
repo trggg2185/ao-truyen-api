@@ -95,7 +95,7 @@ public class GroupCreationRequestService {
     public TransGroupResponse approveCreateGroup(@NonNull String requestId) {
 
         GroupCreationRequest groupCreationRequest = groupCreationRequestRepository
-                .findById(requestId)
+                .findWithCreatorById(requestId)
                 .orElseThrow(() -> new AppException(ResponseCode.TRANSGROUP_CREATION_REQUEST_NOT_FOUND));
 
         // check phải dg ở trg thái pending thì mới duyệt đc
@@ -103,7 +103,6 @@ public class GroupCreationRequestService {
             throw new AppException(ResponseCode.TRANSGROUP_CREATION_REQUEST_STATUS_INVALID);
         }
 
-        // lazy Khác tự bắn thêm sql nữa để get
         User creator = groupCreationRequest.getCreator();
 
         // check user có đang leader 1 group nào approved không (nếu group đó deleted rồithì ko sao)
@@ -117,7 +116,7 @@ public class GroupCreationRequestService {
         }
 
         User reviewer = userRepository
-                .findByUsername(SecurityUtils.getCurrentUsername())
+                .findById(SecurityUtils.getCurrentUserId())
                 .orElseThrow(() -> new AppException(ResponseCode.USER_NOT_FOUND));
 
         // duyệt nhóm từ admin

@@ -70,9 +70,13 @@ public class TransGroupService {
                 .findById(RoleConstants.TRANSLATOR)
                 .orElseThrow(() -> new AppException(ResponseCode.ROLE_NOT_FOUND));
 
-        // Gán role translator cho leader
-        creator.getRoles().add(translatorRole);
+        // Nếu ko phải là admin yêu cầu tạo nhóm thì mới gán role translator
+        if (!userRepository.hasRole(creator.getId(), RoleConstants.ADMIN)) {
+            // Gán role translator cho leader
+            creator.getRoles().add(translatorRole);
+        }
 
+        // là admin yc tạo nhóm thì save luôn, chỉ được có 1 role admin thôi
         creator = userRepository.save(creator);
 
         // quyết định là trong members sẽ ko chứa leader
@@ -175,6 +179,25 @@ public class TransGroupService {
         ));
 
         return response;
+    }
+
+    // Xem chi tiết nhóm theo slug
+    public TransGroupDetailsResponse getGroupBySlug(@NonNull String slug) {
+
+        TransGroup transGroup = transGroupRepository
+                .findWithDetailsBySlug(slug)
+                .orElseThrow(() -> new AppException(ResponseCode.TRANSGROUP_NOT_FOUND));
+
+        List<Manga> translatedMangas = mangaRepository
+                .findAllByGroupId(transGroup.getId());
+
+        TransGroupDetailsResponse response = transGroupMapper.toTransGroupDetailsResponse(transGroup);
+        response.setTranslatedMangas(new HashSet<>(
+                translatedMangas.stream().map(mangaMapper::toMangaSummaryResponse).toList()
+        ));
+
+        return response;
+
     }
 
 

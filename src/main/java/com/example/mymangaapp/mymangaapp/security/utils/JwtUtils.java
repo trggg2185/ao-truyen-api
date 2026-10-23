@@ -1,6 +1,7 @@
 package com.example.mymangaapp.mymangaapp.security.utils;
 
 import java.text.ParseException;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Date;
@@ -8,6 +9,7 @@ import java.util.StringJoiner;
 import java.util.UUID;
 
 import com.example.mymangaapp.mymangaapp.service.InvalidatedTokenService;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -30,6 +32,7 @@ import com.nimbusds.jwt.SignedJWT;
 import lombok.AccessLevel;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.util.StringUtils;
 
 // Class tiện ích, cung cấp các hàm làm việc nhanh với jwt
 // VD: tạo accesstoken, verify token
@@ -39,14 +42,11 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class JwtUtils {
 
-    @Value("${jwt.signer-key}")
+    @Value("${app.auth.signer-key}")
     String signerKey;
 
-    @Value("${jwt.access-token-validity-in-seconds}")
-    long accessTokenValidityInSeconds;
-
-    @Value("${jwt.refreshable-duration-in-seconds}")
-    long refreshableDurationInSeconds;
+    @Value("${app.auth.access-ttl}")
+    Duration accessTtl;
 
     final InvalidatedTokenService invalidatedTokenService;
 
@@ -56,10 +56,10 @@ public class JwtUtils {
         JWSHeader header = new JWSHeader(JWSAlgorithm.HS512);
 
         Instant now = Instant.now();
-        Instant expirationTime = now.plusSeconds(accessTokenValidityInSeconds);
+        Instant expirationTime = now.plusSeconds(accessTtl.toSeconds());
 
         JWTClaimsSet jwtClaimsSet = new JWTClaimsSet.Builder()
-                .subject(user.getUsername())
+                .subject(user.getId()) // sửa lại subject chứa id thay vì username
                 .issuer("trg2k5.com")
                 .issueTime(Date.from(now))
                 .expirationTime(Date.from(expirationTime))
@@ -91,8 +91,8 @@ public class JwtUtils {
        }
     }
 
-    // Lấy username từ token
-    public String extractUsername(String token) {
+    // Lấy user id từ token
+    public String extractUserId(String token) {
         return getClaimsSet(token).getSubject();
     }
 
@@ -106,8 +106,7 @@ public class JwtUtils {
         return getClaimsSet(token).getExpirationTime();
     }
  
-    // xác thực token (đúng chữ ký, chưa hết hạn), 2 TH: verify hoặc verify refresh
-    public boolean verifyToken(String token, boolean isRefresh) {
+    public boolean verifyToken(String token) {
         try {
             JWSVerifier verifier = new MACVerifier(signerKey.getBytes());
         
@@ -119,16 +118,7 @@ public class JwtUtils {
                 return false;
             }
 
-            // Nếu là hàm refresh token thì thời gian hết hạn bằng tg issua token đó + refreshable duration
-            // Nếu là hàm verify token bình thường thì cứ trả về expiration time
-            Date exprirationTime = (isRefresh)
-                    ? new Date(signedJWT
-                            .getJWTClaimsSet()
-                            .getIssueTime()
-                            .toInstant()
-                            .plus(refreshableDurationInSeconds, ChronoUnit.SECONDS)
-                            .toEpochMilli())
-                    : signedJWT.getJWTClaimsSet().getExpirationTime();
+            Date exprirationTime = signedJWT.getJWTClaimsSet().getExpirationTime();
 
             return signedJWT.verify(verifier) && exprirationTime.after(new Date());
 
@@ -136,11 +126,6 @@ public class JwtUtils {
             log.error("Xác thực token thất bại! Hoặc token không hợp lệ");
             return false;
         }
-    }
-
-    // overload giữa nguyên method cho jwt authentication filter
-    public boolean verifyToken(String token) {
-        return verifyToken(token, false);
     }
 
     // scope chỉ cần chứa role của user là đủ
@@ -154,6 +139,21 @@ public class JwtUtils {
         }
 
         return stringJoiner.toString();
+    }
+
+    // Hàm phụ trợ: Bóc tách chuỗi "Bearer <TOKEN>" từ Header Authorization
+    public String parseToken(HttpServletRequest request) {
+        String headerAuth = request.getHeader("Authorization");
+
+        // Lấy chuỗi sau 7 chữ cái đầu Bearer + space, chính là jwt token
+        if (StringUtils.hasText(headerAuth) && headerAuth.startsWith("Bearer ")) {
+            String token = headerAuth.substring(7).trim();
+
+            // Tránh TH trả về chuỗi rỗng
+            return StringUtils.hasText(token) ? token : null;
+        }
+
+        return null;
     }
 
 }

@@ -9,6 +9,7 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
 
 import com.example.mymangaapp.mymangaapp.entity.User;
@@ -34,8 +35,8 @@ public class CustomUserDetailsService implements UserDetailsService {
     public CustomUserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
         
         User user = userRepository
-                .findWithDetailsByUsername(username)
-                .orElseThrow(() -> new AppException(ResponseCode.USER_NOT_FOUND));
+                .findForAuthByUsername(username)
+                .orElseThrow(() -> new AppException(ResponseCode.UNAUTHENTICATED));
 
         // Ta sẽ nạp tất cả các roles và permissions mà user có vào đây
         Set<GrantedAuthority> authorities = new HashSet<>();
@@ -56,7 +57,35 @@ public class CustomUserDetailsService implements UserDetailsService {
         return CustomUserDetails.builder()
                 .id(user.getId())
                 .username(user.getUsername())
-                .password(user.getPassword())
+                .authorities(authorities)
+                .build();
+    }
+
+    @Transactional(readOnly = true)
+    public CustomUserDetails loadUserById(String userId) {
+        User user = userRepository
+                .findForAuthById(userId)
+                .orElseThrow(() -> new AppException(ResponseCode.UNAUTHENTICATED));
+
+        // Ta sẽ nạp tất cả các roles và permissions mà user có vào đây
+        Set<GrantedAuthority> authorities = new HashSet<>();
+
+        if (!CollectionUtils.isEmpty(user.getRoles())) {
+            for (Role role : user.getRoles()) {
+                // Nạp role nhưng phải có prefix ROLE_
+                authorities.add(new SimpleGrantedAuthority("ROLE_" + role.getName()));
+
+                if (!CollectionUtils.isEmpty(role.getPermissions())) {
+                    // Nạp permission, permission thì ko cần prefix
+                    role.getPermissions().forEach(permission ->
+                            authorities.add(new SimpleGrantedAuthority(permission.getName())));
+                }
+            }
+        }
+
+        return CustomUserDetails.builder()
+                .id(user.getId())
+                .username(user.getUsername())
                 .authorities(authorities)
                 .build();
     }

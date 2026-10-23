@@ -46,6 +46,8 @@ public enum ResponseCode {
     // ======================================== 1xxx - AUTHENTICATION ===============================================
     UNAUTHENTICATED("1001", "Chưa được xác thực!", HttpStatus.UNAUTHORIZED),
     PASSWORD_INCORRECT("1002", "Mật khẩu không chính xác!", HttpStatus.UNAUTHORIZED),
+    SOCIAL_TOKEN_INVALID("1003", "Thông tin đăng nhập từ nhà cung cấp không hợp lệ hoặc đã hết hạn!", HttpStatus.UNAUTHORIZED),
+    AUTH_PROVIDER_NOT_SUPPORTED("1004", "Phương thức đăng nhập không được hỗ trợ!", HttpStatus.UNAUTHORIZED),
 
 
     // ========================================= 2xxx - AUTHORIZATION ===============================================
@@ -107,6 +109,8 @@ public enum ResponseCode {
     FILE_REQUIRED("3701", "File không được để trống!", HttpStatus.BAD_REQUEST),
     FILE_SIZE_INVALID("3702", "Kích thước file quá lớn!", HttpStatus.BAD_REQUEST),
 
+    CREDENTIAL_REQUIRED("3801", "Thông tin xác thực không được để trống!", HttpStatus.BAD_REQUEST),
+
 
     // =============================================== 4xxx - RESOURCE (NOT FOUND) =====================================
     // --- User ---
@@ -141,6 +145,7 @@ public enum ResponseCode {
     // --- User ---
     USERNAME_ALREADY_EXISTED("5101", "Tên người dùng đã tồn tại!", HttpStatus.BAD_REQUEST),
     EMAIL_ALREADY_EXISTED("5102", "Email đã tồn tại!", HttpStatus.BAD_REQUEST),
+    EMAIL_USED_BY_ANOTHER_LOGIN_METHOD("5013", "Email này đã được dùng cho tài khoản khác. Hãy đăng nhập bằng cách ban đầu rồi liên kết trong phần cài đặt!", HttpStatus.BAD_REQUEST),
 
     // --- Role / Permission ---
     ROLE_NAME_ALREADY_EXISTED("5201", "Tên vai trò đã tồn tại!", HttpStatus.BAD_REQUEST),
@@ -185,6 +190,7 @@ public enum ResponseCode {
     RUNTIME_EXCEPTION("9003", "Lỗi ngoại lệ runtime!", HttpStatus.INTERNAL_SERVER_ERROR),
     URL_INVALID("9004", "Lỗi url không hợp lệ!", HttpStatus.INTERNAL_SERVER_ERROR),
     HTTP_MESSAGE_NOT_READABLE("9005", "Lỗi không thể đọc message HTTP!", HttpStatus.INTERNAL_SERVER_ERROR),
+    SOCIAL_SERVICE_UNAVAILABLE("9006", "Mất kết nối tới nhà cung cấp đăng nhập!", HttpStatus.INTERNAL_SERVER_ERROR),
 
     // --- File / Storage ---
     STORAGE_SERVICE_UNAVAILABLE("9701", "Dịch vụ lưu trũ không khả dụng!", HttpStatus.SERVICE_UNAVAILABLE),

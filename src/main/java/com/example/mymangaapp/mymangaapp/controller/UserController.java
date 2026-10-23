@@ -3,13 +3,11 @@ package com.example.mymangaapp.mymangaapp.controller;
 import com.example.mymangaapp.mymangaapp.annotation.RateLimit;
 import com.example.mymangaapp.mymangaapp.dto.user.response.*;
 import com.example.mymangaapp.mymangaapp.enums.LimitType;
-import com.example.mymangaapp.mymangaapp.dto.user.request.UserPasswordRequest;
 import com.example.mymangaapp.mymangaapp.dto.common.PaginatedResponse;
 import org.springframework.http.MediaType;
 import org.springframework.lang.NonNull;
 import org.springframework.web.bind.annotation.*;
 
-import com.example.mymangaapp.mymangaapp.dto.user.request.UserCreationRequest;
 import com.example.mymangaapp.mymangaapp.dto.user.request.UserUpdateRequest;
 import com.example.mymangaapp.mymangaapp.dto.common.ApiResponse;
 import com.example.mymangaapp.mymangaapp.exception.ResponseCode;
@@ -76,37 +74,8 @@ public class UserController {
 
     }
 
-    // update password của user hiện tại
-    @PatchMapping("/users/me/password")
-    @RateLimit(resetTimeInSeconds = 900, limitType = LimitType.USER_ID)
-    public ApiResponse<Void> updateMyPassword(
-            @Valid @RequestBody UserPasswordRequest request
-    ) {
-
-        userService.updateMyPassword(request);
-
-        return ApiResponse.<Void>builder()
-                .code(ResponseCode.SUCCESS.getCode())
-                .message(ResponseCode.SUCCESS.getMessage())
-                .build();
-
-    }
-
 
     // ---------------------------- endpoints cho admin --------------------------------- //
-
-    @PostMapping("/admin/users")
-    @RateLimit(capacity = 10, limitType = LimitType.USER_ID)
-    // Nhớ có annotation @Valid để validate các fields trong request
-    public ApiResponse<UserResponse> createUser(@Valid @RequestBody UserCreationRequest request) {
-
-        UserResponse response = userService.createUser(request);
-
-        return ApiResponse.<UserResponse>builder()
-                .result(response)
-                .build();
-
-    }
 
     @GetMapping("/admin/users")
     @RateLimit(capacity = 30, limitType = LimitType.USER_ID)

@@ -1,7 +1,7 @@
 package com.example.mymangaapp.mymangaapp.service;
 
 import com.example.mymangaapp.mymangaapp.entity.SequenceCounter;
-import com.example.mymangaapp.mymangaapp.entity.SequenceCounterRepository;
+import com.example.mymangaapp.mymangaapp.repository.SequenceCounterRepository;
 import com.example.mymangaapp.mymangaapp.exception.AppException;
 import com.example.mymangaapp.mymangaapp.exception.ResponseCode;
 import lombok.AccessLevel;

@@ -5,20 +5,10 @@ import java.util.Set;
 
 import com.example.mymangaapp.mymangaapp.constant.SequenceCounterConstants;
 import com.example.mymangaapp.mymangaapp.entity.*;
-import com.example.mymangaapp.mymangaapp.enums.TransGroupStatus;
-import com.example.mymangaapp.mymangaapp.exception.AppException;
-import com.example.mymangaapp.mymangaapp.exception.ResponseCode;
-import com.example.mymangaapp.mymangaapp.repository.CategoryRepository;
-import com.example.mymangaapp.mymangaapp.repository.TransGroupRepository;
-import org.springframework.beans.factory.annotation.Value;
+import com.example.mymangaapp.mymangaapp.repository.*;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.security.crypto.password.PasswordEncoder;
-
-import com.example.mymangaapp.mymangaapp.repository.PermissionRepository;
-import com.example.mymangaapp.mymangaapp.repository.RoleRepository;
-import com.example.mymangaapp.mymangaapp.repository.UserRepository;
 
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -30,20 +20,6 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class InitApplicationConfig {
-
-    final PasswordEncoder passwordEncoder;
-
-    @Value("${app.init.admin.password}")
-    String adminPassword;
-
-    @Value("${app.init.user1.password}")
-    String user1Password;
-
-    @Value("${app.init.user2.password}")
-    String user2Password;
-
-    @Value("${app.init.user3.password}")
-    String user3Password;
 
     @Bean
     ApplicationRunner applicationRunner(
@@ -113,57 +89,6 @@ public class InitApplicationConfig {
                 );
                 categoryRepository.saveAll(categories);
                 log.info("Tạo các thể loại truyện mặc định thành công!");
-            }
-
-            // Khởi tạo 1 admin và 3 user
-            if (userRepository.count() == 0) {
-                User admin = User.builder()
-                        .username("admin")
-                        .password(passwordEncoder.encode(adminPassword))
-                        .email("admin@gmail.com")
-                        .roles(Set.of(adminRole))
-                        .build();
-
-                User user1 = User.builder()
-                        .username("trg25")
-                        .password(passwordEncoder.encode(user1Password))
-                        .email("trg25@gmail.com")
-                        .roles(Set.of(userRole))
-                        .build();
-
-                User user2 = User.builder()
-                        .username("khoa12")
-                        .password(passwordEncoder.encode(user2Password))
-                        .email("khoa12@gmail.com")
-                        .roles(Set.of(userRole))
-                        .build();
-
-                User user3 = User.builder()
-                        .username("linh25")
-                        .password(passwordEncoder.encode(user3Password))
-                        .email("linh25@gmail.com")
-                        .roles(Set.of(userRole))
-                        .build();
-
-                userRepository.saveAll(List.of(admin, user1, user2, user3));
-                log.info("Tạo các user mặc định thành công!");
-            }
-
-            if (transGroupRepository.count() == 0) {
-                User leader = userRepository
-                        .findByUsername("admin")
-                        .orElseThrow(() -> new AppException(ResponseCode.USER_NOT_FOUND));
-
-                TransGroup transGroup = TransGroup.builder()
-                        .name("Admin Team")
-                        .leader(leader)
-                        // bỏ set leader vào trong mảng members
-                        .status(TransGroupStatus.APPROVED)
-                        .description("Transgroup của admin!")
-                        .build();
-
-                transGroupRepository.save(transGroup);
-                log.info("Tạo nhóm dịch của admin thành công!");
             }
 
             List<SequenceCounter> scs = List.of(

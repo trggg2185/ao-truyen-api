@@ -1,11 +1,7 @@
 package com.example.mymangaapp.mymangaapp.dto.auth.request;
 
 import jakarta.validation.constraints.NotBlank;
-import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import lombok.experimental.FieldDefaults;
 
 @Data
@@ -13,8 +9,9 @@ import lombok.experimental.FieldDefaults;
 @NoArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
 @Builder
-public class RefreshRequest {
+public class AuthRequest {
 
-    @NotBlank(message = "TOKEN_REQUIRED")
-    String token;
+    @NotBlank(message = "CREDENTIAL_REQUIRED")
+    String credential;
+
 }

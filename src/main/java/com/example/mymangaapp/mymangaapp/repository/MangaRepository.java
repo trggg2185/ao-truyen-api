@@ -53,6 +53,9 @@ public interface MangaRepository extends JpaRepository<Manga, String> {
    @EntityGraph(attributePaths = { "categories", "transGroups" })
    Optional<Manga> findWithDetailsById(String id);
 
+   @EntityGraph(attributePaths = { "categories", "transGroups" })
+   Optional<Manga> findWithDetailsBySlug(String slug);
+
    // Dùng khi rút nhóm: khóa dòng manga, hai request cùng rút sẽ xếp hàng
    @Lock(LockModeType.PESSIMISTIC_WRITE)
    @Query("SELECT m FROM Manga m WHERE m.id = :id")

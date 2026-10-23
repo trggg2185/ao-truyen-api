@@ -18,6 +18,7 @@ public class PublicUserProfileResponse {
 
     String id;
     String username;
+    String displayName;
     String avatar;
     String bio;
     String facebook;

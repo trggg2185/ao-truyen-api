@@ -21,6 +21,7 @@ public class CurrentUserResponse {
 
     String id;
     String username;
+    String displayName;
     String email;
     String facebook;
     String discord;

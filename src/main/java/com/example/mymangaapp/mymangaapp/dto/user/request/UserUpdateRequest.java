@@ -1,6 +1,5 @@
 package com.example.mymangaapp.mymangaapp.dto.user.request;
 
-import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.Size;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -20,11 +19,11 @@ public class UserUpdateRequest {
     // Update info user không nên cho update password trong này
     // Nên để đổi password thành 1 endpoint riêng
 
-    @Email(message = "EMAIL_INVALID")
-    String email;
-
     String facebook;
     String discord;
+
+    @Size(max = 50, message = "DISPLAY_NAME_INVALID")
+    String displayName;
 
     @Size(max = 300, message = "BIO_INVALID")
     String bio;

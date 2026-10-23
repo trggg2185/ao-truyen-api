@@ -14,5 +14,6 @@ public class UserSummaryResponse {
 
     String id;
     String username;
+    String displayName;
     String avatar;
 }

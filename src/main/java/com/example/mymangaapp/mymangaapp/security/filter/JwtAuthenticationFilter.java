@@ -1,7 +1,5 @@
 package com.example.mymangaapp.mymangaapp.security.filter;
 
-import com.example.mymangaapp.mymangaapp.exception.AppException;
-import com.example.mymangaapp.mymangaapp.exception.ResponseCode;
 import com.example.mymangaapp.mymangaapp.security.service.CustomUserDetails;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.lang.NonNull;
@@ -10,13 +8,11 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
-import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 import org.springframework.web.servlet.HandlerExceptionResolver;
 
 import com.example.mymangaapp.mymangaapp.security.service.CustomUserDetailsService;
 import com.example.mymangaapp.mymangaapp.security.utils.JwtUtils;
-import org.slf4j.MDC;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.http.HttpServletRequest;
@@ -53,26 +49,21 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             @NonNull FilterChain filterChain) {
 
         try {
-            String token = parseToken(request);
+            String token = jwtUtils.parseToken(request);
 
             // Check token ko null và có hợp lệ (chuẩn chữ ký, chưa hết hạn)
             // Nếu là public endpoint thì sẽ ko có header authorization 
             // nên token sẽ null và chạy qua luôn filter này, đền tầng authorization filter
             // vì ko có gì trong context đáng nhẽ bị chặn nhưng nó là public endpoint 
             // nên cứ thể qua tầng authorization filter
-            if (token != null) {
-
-                // Nếu TH có token nhưng lại không hợp lệ thì bắn unauthenticated luôn
-                if (!jwtUtils.verifyToken(token)) {
-                    throw new AppException(ResponseCode.UNAUTHENTICATED);
-                }
+            if (token != null && jwtUtils.verifyToken(token)) {
 
                 // Lấy username từ token
-                String username = jwtUtils.extractUsername(token);
+                String userId = jwtUtils.extractUserId(token);
 
-                if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+                if (userId != null && SecurityContextHolder.getContext().getAuthentication() == null) {
                     // Lấy thông tin UserDetails (bao gồm cả Authorities/Permissions) từ db
-                    CustomUserDetails customUserDetails = customUserDetailsService.loadUserByUsername(username);
+                    CustomUserDetails customUserDetails = customUserDetailsService.loadUserById(userId);
 
                     // Tạo đối tượng Authentication chuẩn của Spring Security
                     UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(
@@ -87,7 +78,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     // Nap authentiaction vao context
                     // request này chính thức đăng nhập thành công
                     SecurityContextHolder.getContext().setAuthentication(authenticationToken);
-                    //MDC.put("userId", customUserDetails.getId());
                 }
             }
 
@@ -99,21 +89,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             resolver.resolveException(request, response, null, e);
         }
 
-    }
-
-    // Hàm phụ trợ: Bóc tách chuỗi "Bearer <TOKEN>" từ Header Authorization
-    private String parseToken(HttpServletRequest request) {
-        String headerAuth = request.getHeader("Authorization");
-
-        // Lấy chuỗi sau 7 chữ cái đầu Bearer + space, chính là jwt token
-        if (StringUtils.hasText(headerAuth) && headerAuth.startsWith("Bearer ")) {
-            String token = headerAuth.substring(7).trim();
-
-            // Tránh TH trả về chuỗi rỗng
-            return StringUtils.hasText(token) ? token : null;
-        }
-
-        return null;
     }
 
 }

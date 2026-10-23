@@ -24,7 +24,7 @@ public class ViewFlushScheduler {
     private final TransactionTemplate transactionTemplate;   // Spring Boot tự tạo sẵn bean này
 
     // Mỗi 5 phút
-    @Scheduled(cron = "*/30 * * * * *")
+    @Scheduled(cron = "0 */5 * * * *")
     public void flushViews() {
         Map<String, Long> claimed = chapterViewService.claimPendingViews();
         if (claimed.isEmpty()) {

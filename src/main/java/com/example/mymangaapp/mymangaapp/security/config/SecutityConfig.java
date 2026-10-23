@@ -32,8 +32,7 @@ public class SecutityConfig {
     JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
 
     static String[] POST_PUBLIC_ENDPOINTS = {
-            "/auth/register", // user tự tạo acc mới
-            "/auth/login", // đăng nhập
+            "/auth/social/*", // đăng nhập cũng là đăng ký với google, facebook,...
             "/auth/introspect", // check nhanh token còn valid k
             "/auth/logout", // đăng xuất
             "/auth/refresh" // refresh token
@@ -58,7 +57,7 @@ public class SecutityConfig {
     SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
 
         http
-                .csrf(AbstractHttpConfigurer::disable) // <=> csrf -> csrf.disable()
+                .csrf(AbstractHttpConfigurer::disable)
                 .cors(Customizer.withDefaults()) // active cors để spring biết và dùng bean corsfilter đã đc config
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(request -> request

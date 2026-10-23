@@ -328,6 +328,16 @@ public class MangaService {
         return mangaMapper.toMangaDetailsResponse(manga);
     }
 
+    public MangaDetailsResponse getMangaBySlug(@NonNull String slug) {
+
+        // này phải dùng method select toàn bộ thông tin manga có cả chapter
+        Manga manga = mangaRepository
+                .findWithDetailsBySlug(slug)
+                .orElseThrow(() -> new AppException(ResponseCode.MANGA_NOT_FOUND));
+
+        return mangaMapper.toMangaDetailsResponse(manga);
+    }
+
 
     // --------------------------method private --------------------------------------
 

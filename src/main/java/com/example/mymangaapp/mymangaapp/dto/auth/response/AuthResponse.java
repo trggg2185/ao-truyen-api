@@ -12,7 +12,8 @@ import lombok.experimental.FieldDefaults;
 @NoArgsConstructor
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class AuthenticationResponse {
+public class AuthResponse {
     boolean authenticated;
     String token;
+    Long expiresIn;
 }

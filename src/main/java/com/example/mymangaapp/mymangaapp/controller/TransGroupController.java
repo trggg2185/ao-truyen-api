@@ -27,7 +27,7 @@ public class TransGroupController {
     // -----------------------------------endpoint cho user đã đăng nhập ----------------------------------//
 
     @GetMapping("/users/me/transgroups")
-    // chưa đánh rate limit
+    @RateLimit(capacity = 60, limitType = LimitType.USER_ID)
     public ApiResponse<TransGroupOfUserResponse> getMyGroup() {
         return ApiResponse.<TransGroupOfUserResponse>builder()
                 .result(transGroupService.getMyGroup())
@@ -53,9 +53,19 @@ public class TransGroupController {
     }
 
     @GetMapping("/transgroups/{id}")
-    // chưa đánh rate limit
+    @RateLimit(capacity = 60, limitType = LimitType.USER_ID)
     public ApiResponse<TransGroupDetailsResponse> getGroupById(@PathVariable @NonNull String id) {
         TransGroupDetailsResponse response = transGroupService.getGroupById(id);
+
+        return ApiResponse.<TransGroupDetailsResponse>builder()
+                .result(response)
+                .build();
+    }
+
+    @GetMapping("/transgroups/{slug}")
+    // chưa đánh rate limit
+    public ApiResponse<TransGroupDetailsResponse> getGroupBySlug(@PathVariable @NonNull String slug) {
+        TransGroupDetailsResponse response = transGroupService.getGroupBySlug(slug);
 
         return ApiResponse.<TransGroupDetailsResponse>builder()
                 .result(response)

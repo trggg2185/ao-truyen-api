@@ -1,5 +1,6 @@
 package com.example.mymangaapp.mymangaapp.entity;
 
+import java.util.List;
 import java.util.Set;
 
 import jakarta.persistence.*;
@@ -38,19 +39,19 @@ public class User extends BaseEntity {
     String id;
 
     // username không phân biệt chữ hoa thường
-    @Column(name = "username", nullable = false, unique = true, columnDefinition = "VARCHAR(50) COLLATE utf8mb4_unicode_ci")
+    @Column(nullable = false, unique = true, columnDefinition = "VARCHAR(50) COLLATE utf8mb4_unicode_ci")
     String username;
 
-    @Column(name = "email", unique = true)
-    String email;
+    @Column(length = 50)
+    String displayName;
 
-    @Column(name = "password", nullable = false, length = 100)
-    String password;
+    @Column(unique = true)
+    String email;
 
     String facebook;
     String discord;
 
-    @Column(name = "bio", length = 300)
+    @Column(length = 300)
     String bio;
 
     @Column(length = 500)
@@ -73,5 +74,8 @@ public class User extends BaseEntity {
     // 1userr làm leader nhiều nhóm (nhóm đang hoạtdđọng và nhóm đã xoá)
     @OneToMany(mappedBy = "leader", fetch = FetchType.LAZY)
     Set<TransGroup> transGroups;
+
+    @OneToMany(mappedBy = "user", fetch = FetchType.LAZY)
+    List<UserIdentity> userIdentityList;
 
 }

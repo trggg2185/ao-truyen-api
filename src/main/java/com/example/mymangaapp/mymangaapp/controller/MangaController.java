@@ -148,4 +148,16 @@ public class MangaController {
                 .build();
     }
 
+    @GetMapping("/mangas/{slug}")
+    @RateLimit(capacity = 60)
+    public ApiResponse<MangaDetailsResponse> getMangaBySlug(
+            @PathVariable @NonNull String slug
+    ) {
+        MangaDetailsResponse response = mangaService.getMangaBySlug(slug);
+
+        return ApiResponse.<MangaDetailsResponse>builder()
+                .result(response)
+                .build();
+    }
+
 }

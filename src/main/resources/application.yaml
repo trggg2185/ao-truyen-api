@@ -31,10 +31,6 @@ spring:
     jackson:
         mapper:
             accept-case-insensitive-enums: true #cho phép field của body request nhận vào gtrị enum ko pb hoa thường
-jwt:
-    signer-key: ${SIGNER_KEY}
-    access-token-validity-in-seconds: ${ACCESS_TOKEN_VALIDITY_IN_SECONDS}
-    refreshable-duration-in-seconds: ${REFRESHABLE_DURATION_IN_SECONDS}
 
 cloud:
     r2:
@@ -51,15 +47,20 @@ cloud:
 app:
     init:
         admin:
-            password: ${INIT_ADMIN_PASSWORD}
-        user1:
-            password: ${INIT_USER1_PASSWORD}
-        user2:
-            password: ${INIT_USER2_PASSWORD}
-        user3:
-            password: ${INIT_USER3_PASSWORD}
+            email: ${ADMIN_EMAIL}
     cors:
         allowed-origins: "http://localhost:5173, http://127.0.0.1:5173"
+    auth:
+        google:
+            client-id: ${GOOGLE_CLIENT_ID}
+        signer-key: ${SIGNER_KEY}
+        access-ttl: ${ACCESS_TTL}
+        refresh-ttl: ${REFRESH_TTL}
+        refresh-grace: ${REFRESH_GRACE}
+        cookie:
+            secure: ${COOKIE_SECURE:false}
+            same-site: Strict
+            path: /mymangaapp/auth
 
 #logging:
     #level:

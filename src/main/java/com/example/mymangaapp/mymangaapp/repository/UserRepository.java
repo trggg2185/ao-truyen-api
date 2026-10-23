@@ -19,10 +19,10 @@ public interface UserRepository extends JpaRepository<User, String> {
     boolean existsByEmail(String email);
 
     @Query("""
-        SELECT COUNT(u) > 0
-        FROM User u
-        JOIN u.roles r
-        WHERE u.id = :userId AND r.name = :roleName
+            SELECT COUNT(u) > 0
+            FROM User u
+            JOIN u.roles r
+            WHERE u.id = :userId AND r.name = :roleName
     """)
     boolean hasRole(String userId, String roleName);
 
@@ -38,11 +38,17 @@ public interface UserRepository extends JpaRepository<User, String> {
     Optional<User> findWithGroupByUsername(String username);
 
     // Khi lấy user, lấy luôn roles, và khi lấy các roles, lấy luôn các permissions
-    @EntityGraph(attributePaths = { "roles", "roles.permissions", "transGroup" })
+    @EntityGraph(attributePaths = { "roles", "transGroup" })
     Optional<User> findWithDetailsByUsername(@NonNull String username);
 
-    @EntityGraph(attributePaths = { "roles", "roles.permissions", "transGroup" })
+    @EntityGraph(attributePaths = { "roles", "transGroup" })
     Optional<User> findWithDetailsById(@NonNull String id);
+
+    @EntityGraph(attributePaths = { "roles", "roles.permissions" })
+    Optional<User> findForAuthByUsername(@NonNull String username);
+
+    @EntityGraph(attributePaths = { "roles", "roles.permissions" })
+    Optional<User> findForAuthById(@NonNull String id);
 
     @NonNull
     Page<User> findAll(@NonNull Pageable pageable);
