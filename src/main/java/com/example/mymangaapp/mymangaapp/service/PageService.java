@@ -12,6 +12,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Sort;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.stream.IntStream;
@@ -31,6 +32,7 @@ public class PageService {
 
     // lấy tất cả các files ảnh của chapter theo id (tức là user đọc 1 chương truyện)
     // ==> cx public luôn
+    @Transactional(readOnly = true)
     public List<PageResponse> getAllPagesByChapterId(
             @NonNull String chapterId, @NonNull String sortBy
     ) {

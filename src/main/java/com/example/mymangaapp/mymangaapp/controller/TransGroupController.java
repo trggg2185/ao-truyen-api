@@ -52,20 +52,11 @@ public class TransGroupController {
                 .build();
     }
 
-    @GetMapping("/transgroups/{id}")
+    @GetMapping("/transgroups/{idOrSlug}")
     @RateLimit(capacity = 60, limitType = LimitType.USER_ID)
-    public ApiResponse<TransGroupDetailsResponse> getGroupById(@PathVariable @NonNull String id) {
-        TransGroupDetailsResponse response = transGroupService.getGroupById(id);
+    public ApiResponse<TransGroupDetailsResponse> getGroupByIdOrSlug(@PathVariable @NonNull String idOrSlug) {
 
-        return ApiResponse.<TransGroupDetailsResponse>builder()
-                .result(response)
-                .build();
-    }
-
-    @GetMapping("/transgroups/{slug}")
-    // chưa đánh rate limit
-    public ApiResponse<TransGroupDetailsResponse> getGroupBySlug(@PathVariable @NonNull String slug) {
-        TransGroupDetailsResponse response = transGroupService.getGroupBySlug(slug);
+        TransGroupDetailsResponse response = transGroupService.getGroupByIdOrSlug(idOrSlug);
 
         return ApiResponse.<TransGroupDetailsResponse>builder()
                 .result(response)

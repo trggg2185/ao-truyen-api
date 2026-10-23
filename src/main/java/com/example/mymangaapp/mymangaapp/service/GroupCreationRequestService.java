@@ -164,6 +164,7 @@ public class GroupCreationRequestService {
     }
 
     // Lấy tất cả những yêu cầu tạo group
+    @Transactional(readOnly = true)
     public PaginatedResponse<CreationRequestResponse> getAllCreationRequests(
             GroupCreationRequestStatus status, int page,
             int size, @NonNull String sortBy

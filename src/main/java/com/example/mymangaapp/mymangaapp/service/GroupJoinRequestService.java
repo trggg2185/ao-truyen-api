@@ -30,7 +30,7 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
-@Slf4j
+@Slf4j @Transactional(readOnly = true)
 public class GroupJoinRequestService {
 
     RoleRepository roleRepository;
@@ -46,10 +46,10 @@ public class GroupJoinRequestService {
     @Transactional
     public JoinRequestResponse requestJoinGroup(@NonNull String groupId) {
 
-        String username = SecurityUtils.getCurrentUsername();
+        String currentUserId = SecurityUtils.getCurrentUserId();
 
         User user = userRepository
-                .findWithDetailsByUsername(username)
+                .findWithGroupById(currentUserId)
                 .orElseThrow(() -> new AppException(ResponseCode.USER_NOT_FOUND));
 
         // Check xem user này đã gửi yêu cầu đang chờ duyệt vào nhóm dịch này chưa, gửi lại thì báo lỗi

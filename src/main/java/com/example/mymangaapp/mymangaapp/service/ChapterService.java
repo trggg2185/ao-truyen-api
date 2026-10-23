@@ -130,6 +130,7 @@ public class ChapterService {
 
     // user thì ai cx vào manga bất kỳ và đều đọc đc các chapters
     // ==> để public method này
+    @Transactional(readOnly = true)
     public PaginatedResponse<ChapterSummaryResponse> getAllChaptersByMangaId(
             @NonNull String mangaId, int page,
             int size, @NonNull String sortBy

@@ -20,6 +20,7 @@ import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -72,6 +73,7 @@ public class AuthService {
     * -> POST /auth/logout: thu hồi refresh token, đưa access token hiện tại vào blacklist, xóa cookie
     * */
 
+    @Transactional
     public AuthTokens login(AuthProvider provider, AuthRequest request) {
 
         // Đầu teên lấy provider từ registry rồi xác thực credential được gửi lên từ frontend
@@ -127,6 +129,7 @@ public class AuthService {
     }
 
     // Refresh token mới
+    @Transactional(readOnly = true)
     public AuthTokens refresh(String rawRefreshToken) {
 
         RefreshTokenService.Rotation rotation = refreshTokenService.rotate(rawRefreshToken);

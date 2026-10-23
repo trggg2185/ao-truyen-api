@@ -45,6 +45,7 @@ public class PermissionService {
     }
 
     // admin
+    @Transactional(readOnly = true)
     public List<PermissionResponse> getAllPermissions() {
 
         List<Permission> permissions = permissionRepository.findAll();

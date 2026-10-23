@@ -1,5 +1,7 @@
 package com.example.mymangaapp.mymangaapp.dto.groupjoin.response;
 
+import com.example.mymangaapp.mymangaapp.dto.transgroup.response.TransGroupSummaryResponse;
+import com.example.mymangaapp.mymangaapp.dto.user.response.UserSummaryResponse;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
@@ -13,8 +15,8 @@ import java.time.Instant;
 public class JoinRequestResponse {
 
     String id;
-    String transGroupName;
-    String username;
+    TransGroupSummaryResponse transGroup;
+    UserSummaryResponse user;
     String status;
     Instant createdAt;
     Instant updatedAt;

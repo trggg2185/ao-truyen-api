@@ -29,17 +29,18 @@ public class TransGroupMemberService {
     RoleRepository roleRepository;
 
     @Transactional
-    @PreAuthorize("@groupSec.isGroupLeader(#groupId)")
+    @PreAuthorize("@groupSec.isGroupLeader(#groupId)") // user hiện tại phải là leader nhóm này
     public void kickMember(String groupId, String memberId) {
 
         TransGroup transGroup = transGroupRepository
-                .findById(groupId)
+                .findWithMembersById(groupId)
                 .orElseThrow(() -> new AppException(ResponseCode.TRANSGROUP_NOT_FOUND));
 
         User member = userRepository
                 .findWithRolesById(memberId)
                 .orElseThrow(() -> new AppException(ResponseCode.USER_NOT_FOUND));
 
+        // check user bị kick phải là member nhóm này
         if (!transGroupRepository.isMemberOfGroup(groupId, memberId)) {
             throw new AppException(ResponseCode.UNAUTHORIZED);
         }

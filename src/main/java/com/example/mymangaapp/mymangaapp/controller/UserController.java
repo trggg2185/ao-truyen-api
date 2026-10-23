@@ -33,11 +33,11 @@ public class UserController {
 
     // ---------------------- endpoint public đây (dành cho khách) -------------------------- //
 
-    @GetMapping("/users/{username}")
-    public ApiResponse<PublicUserProfileResponse> getUserProfile(@PathVariable @NonNull String username) {
+    @GetMapping("/users/{idOrUsername}")
+    public ApiResponse<PublicUserProfileResponse> getUserProfile(@PathVariable @NonNull String idOrUsername) {
 
         return ApiResponse.<PublicUserProfileResponse>builder()
-                .result(userService.getUserProfile(username))
+                .result(userService.getUserProfile(idOrUsername))
                 .build();
     }
 

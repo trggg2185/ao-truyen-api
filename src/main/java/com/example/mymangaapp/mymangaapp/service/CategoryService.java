@@ -20,7 +20,7 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
-@Slf4j
+@Slf4j @Transactional(readOnly = true)
 public class CategoryService {
 
     CategoryRepository categoryRepository;

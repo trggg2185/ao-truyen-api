@@ -136,24 +136,12 @@ public class MangaController {
                 .build();
     }
 
-    @GetMapping("/mangas/{id}")
+    @GetMapping("/mangas/{idOrSlug}")
     @RateLimit(capacity = 60)
-    public ApiResponse<MangaDetailsResponse> getMangaById(
-            @PathVariable @NonNull String id
+    public ApiResponse<MangaDetailsResponse> getMangaByIdOrSlug(
+            @PathVariable @NonNull String idOrSlug
     ) {
-        MangaDetailsResponse response = mangaService.getMangaById(id);
-
-        return ApiResponse.<MangaDetailsResponse>builder()
-                .result(response)
-                .build();
-    }
-
-    @GetMapping("/mangas/{slug}")
-    @RateLimit(capacity = 60)
-    public ApiResponse<MangaDetailsResponse> getMangaBySlug(
-            @PathVariable @NonNull String slug
-    ) {
-        MangaDetailsResponse response = mangaService.getMangaBySlug(slug);
+        MangaDetailsResponse response = mangaService.getMangaByIdOrSlug(idOrSlug);
 
         return ApiResponse.<MangaDetailsResponse>builder()
                 .result(response)

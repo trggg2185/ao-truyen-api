@@ -26,6 +26,7 @@ import com.example.mymangaapp.mymangaapp.service.storage.ObjectStorage;
 import com.example.mymangaapp.mymangaapp.service.storage.StorageService;
 import com.example.mymangaapp.mymangaapp.utils.SlugUtils;
 import com.example.mymangaapp.mymangaapp.utils.StorageKeysUtils;
+import com.example.mymangaapp.mymangaapp.utils.UUIDUtils;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -318,22 +319,16 @@ public class MangaService {
     // public
     // đây là khi user nhấn chi tiết 1 manga
     // manga sẽ get toàn bộ info, có cả các chapter luôn
-    public MangaDetailsResponse getMangaById(@NonNull String id) {
+    public MangaDetailsResponse getMangaByIdOrSlug(@NonNull String idOrSlug) {
 
         // này phải dùng method select toàn bộ thông tin manga có cả chapter
-        Manga manga = mangaRepository
-                .findWithDetailsById(id)
-                .orElseThrow(() -> new AppException(ResponseCode.MANGA_NOT_FOUND));
-
-        return mangaMapper.toMangaDetailsResponse(manga);
-    }
-
-    public MangaDetailsResponse getMangaBySlug(@NonNull String slug) {
-
-        // này phải dùng method select toàn bộ thông tin manga có cả chapter
-        Manga manga = mangaRepository
-                .findWithDetailsBySlug(slug)
-                .orElseThrow(() -> new AppException(ResponseCode.MANGA_NOT_FOUND));
+        Manga manga = UUIDUtils.isUuid(idOrSlug)
+                ? mangaRepository
+                        .findWithDetailsById(idOrSlug)
+                        .orElseThrow(() -> new AppException(ResponseCode.MANGA_NOT_FOUND))
+                : mangaRepository
+                        .findWithDetailsBySlug(idOrSlug)
+                        .orElseThrow(() -> new AppException(ResponseCode.MANGA_NOT_FOUND));
 
         return mangaMapper.toMangaDetailsResponse(manga);
     }

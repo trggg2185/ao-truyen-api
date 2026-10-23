@@ -16,6 +16,7 @@ import com.example.mymangaapp.mymangaapp.security.utils.SecurityUtils;
 import com.example.mymangaapp.mymangaapp.service.storage.ObjectStorage;
 import com.example.mymangaapp.mymangaapp.service.storage.StorageService;
 import com.example.mymangaapp.mymangaapp.utils.StorageKeysUtils;
+import com.example.mymangaapp.mymangaapp.utils.UUIDUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -59,11 +60,15 @@ public class UserService {
 
     // ---------------------------------- chức năng cho khách ---------------------------------------------------- //
 
-    public PublicUserProfileResponse getUserProfile(@NonNull String username) {
+    public PublicUserProfileResponse getUserProfile(@NonNull String idOrUsername) {
 
-        User user = userRepository
-                .findWithGroupByUsername(username)
-                .orElseThrow(() -> new AppException(ResponseCode.USER_NOT_FOUND));
+        User user = UUIDUtils.isUuid(idOrUsername)
+                ? userRepository // là id thì tìm theo id
+                        .findWithGroupById(idOrUsername)
+                        .orElseThrow(() -> new AppException(ResponseCode.USER_NOT_FOUND))
+                : userRepository // là username thì tìm theo username
+                        .findWithGroupByUsername(idOrUsername)
+                        .orElseThrow(() -> new AppException(ResponseCode.USER_NOT_FOUND));
 
         PublicUserProfileResponse response = userMapper.toPublicUserProfileResponse(user);
 

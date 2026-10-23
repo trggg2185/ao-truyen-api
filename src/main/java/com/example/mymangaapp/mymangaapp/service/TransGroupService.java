@@ -21,6 +21,7 @@ import com.example.mymangaapp.mymangaapp.security.utils.SecurityUtils;
 import com.example.mymangaapp.mymangaapp.service.storage.ObjectStorage;
 import com.example.mymangaapp.mymangaapp.service.storage.StorageService;
 import com.example.mymangaapp.mymangaapp.utils.StorageKeysUtils;
+import com.example.mymangaapp.mymangaapp.utils.UUIDUtils;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -42,7 +43,7 @@ import java.util.Optional;
 @Service
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
-@Slf4j
+@Slf4j @Transactional(readOnly = true)
 public class TransGroupService {
 
     UserRepository userRepository;
@@ -93,7 +94,6 @@ public class TransGroupService {
     // ------------------------------------chức năng cho user đã đăng nhập ----------------------------------//
 
     // Chức năng lấy nhóm dịch mà user đang tham gia
-    @Transactional(readOnly = true)
     public TransGroupOfUserResponse getMyGroup() {
 
         // Nếu chưa đăng nhập thì tự ném UNAUTHENTICATED
@@ -164,29 +164,15 @@ public class TransGroupService {
 
     // chức năng khi 1 user vào trang cá nhân của 1 nhóm
     // hiện chi tiết toàn bộ về nhóm đó
-    public TransGroupDetailsResponse getGroupById(@NonNull String id) {
+    public TransGroupDetailsResponse getGroupByIdOrSlug(@NonNull String idOrSlug) {
 
-        TransGroup transGroup = transGroupRepository
-                .findWithDetailsById(id)
-                .orElseThrow(() -> new AppException(ResponseCode.TRANSGROUP_NOT_FOUND));
-
-        List<Manga> translatedMangas = mangaRepository
-                .findAllByGroupId(id);
-
-        TransGroupDetailsResponse response = transGroupMapper.toTransGroupDetailsResponse(transGroup);
-        response.setTranslatedMangas(new HashSet<>(
-                translatedMangas.stream().map(mangaMapper::toMangaSummaryResponse).toList()
-        ));
-
-        return response;
-    }
-
-    // Xem chi tiết nhóm theo slug
-    public TransGroupDetailsResponse getGroupBySlug(@NonNull String slug) {
-
-        TransGroup transGroup = transGroupRepository
-                .findWithDetailsBySlug(slug)
-                .orElseThrow(() -> new AppException(ResponseCode.TRANSGROUP_NOT_FOUND));
+        TransGroup transGroup = UUIDUtils.isUuid(idOrSlug)
+                ? transGroupRepository // là id thì tìm theo id
+                        .findWithDetailsById(idOrSlug)
+                        .orElseThrow(() -> new AppException(ResponseCode.TRANSGROUP_NOT_FOUND))
+                : transGroupRepository // là slug thì tìm theo slug
+                        .findWithDetailsBySlug(idOrSlug)
+                        .orElseThrow(() -> new AppException(ResponseCode.TRANSGROUP_NOT_FOUND));
 
         List<Manga> translatedMangas = mangaRepository
                 .findAllByGroupId(transGroup.getId());
@@ -197,7 +183,6 @@ public class TransGroupService {
         ));
 
         return response;
-
     }
 
 
@@ -232,16 +217,22 @@ public class TransGroupService {
 
     // xoá nhóm dịch, admin cho đc tất, leader chỉ xoá đc nhóm của mình
     @Transactional // cho thêm vì có 1 câu query mình tự định nghĩa, để spring cho vào 1 transaction
-    @PreAuthorize("@groupSec.isGroupLeaderOrAdmin(#id)")
     public void softDeleteGroupById(@NonNull String id) {
 
         TransGroup transGroup = transGroupRepository
-                .findById(id)
+                .findWithLeaderAndRoleById(id) // get leader và roles của leader luôn tí dùng
                 .orElseThrow(() -> new AppException(ResponseCode.TRANSGROUP_NOT_FOUND));
 
         // Check nhómdịch bị xoá chưa
         if (transGroup.getStatus().equals(TransGroupStatus.DELETED)) {
             throw new AppException(ResponseCode.TRANSGROUP_ALREADY_DELETED);
+        }
+
+        String currentUserId = SecurityUtils.getCurrentUserId();
+
+        // Phải là admin hoặc leader nhóm đang muốn xoá mới có quyền thao tác
+        if (!SecurityUtils.isAdmin() || !currentUserId.equals(transGroup.getLeader().getId())) {
+            throw new AppException(ResponseCode.UNAUTHORIZED);
         }
 
         // Cập nhập trạng thái nhóm đã bị xoá
