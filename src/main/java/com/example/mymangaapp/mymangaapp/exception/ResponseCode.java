@@ -48,11 +48,12 @@ public enum ResponseCode {
     PASSWORD_INCORRECT("1002", "Mật khẩu không chính xác!", HttpStatus.UNAUTHORIZED),
     SOCIAL_TOKEN_INVALID("1003", "Thông tin đăng nhập từ nhà cung cấp không hợp lệ hoặc đã hết hạn!", HttpStatus.UNAUTHORIZED),
     AUTH_PROVIDER_NOT_SUPPORTED("1004", "Phương thức đăng nhập không được hỗ trợ!", HttpStatus.UNAUTHORIZED),
+    USER_BANNED("1005", "Tài khoản đã bị khoá! Vui lòng liên hệ với admin đễ hỗ trợ!", HttpStatus.FORBIDDEN),
 
 
     // ========================================= 2xxx - AUTHORIZATION ===============================================
     UNAUTHORIZED("2001", "Không có quyền!", HttpStatus.FORBIDDEN),
-    CANNOT_MODIFY_ADMIN("2002", "Không thể thao tác lên admin khác!", HttpStatus.FORBIDDEN),
+    CANNOT_MODIFY_ADMIN("2002", "Không thể thao tác lên tài khoản có quyền admin!", HttpStatus.FORBIDDEN),
 
 
     // ========================================== 3xxx - VALIDATION ==================================================
@@ -67,6 +68,8 @@ public enum ResponseCode {
     USERNAME_REQUIRED("3105", "Tên người dùng không được để trống!", HttpStatus.BAD_REQUEST),
     PASSWORD_REQUIRED("3106", "Mật khẩu không được để trống!", HttpStatus.BAD_REQUEST),
     TOKEN_REQUIRED("3107", "Chuỗi token không được để trống!", HttpStatus.BAD_REQUEST),
+    EMAIL_REQUIRED("3108", "Email không được rỗng!", HttpStatus.BAD_REQUEST),
+    NEW_LEADER_REQUIRED("3109", "Id thành viên được chuyển quyền không được rỗng!", HttpStatus.BAD_REQUEST),
 
     // --- Role / Permission ---
     ROLE_NAME_REQUIRED("3201", "Tên vai trò không được để trống!", HttpStatus.BAD_REQUEST),
@@ -146,6 +149,8 @@ public enum ResponseCode {
     USERNAME_ALREADY_EXISTED("5101", "Tên người dùng đã tồn tại!", HttpStatus.BAD_REQUEST),
     EMAIL_ALREADY_EXISTED("5102", "Email đã tồn tại!", HttpStatus.BAD_REQUEST),
     EMAIL_USED_BY_ANOTHER_LOGIN_METHOD("5013", "Email này đã được dùng cho tài khoản khác. Hãy đăng nhập bằng cách ban đầu rồi liên kết trong phần cài đặt!", HttpStatus.BAD_REQUEST),
+    USER_IS_GROUP_LEADER("5014", "Người dùng đang là leader nhóm dịch! Phải chuyển quyền trước khi xoá tài khoản!", HttpStatus.BAD_REQUEST),
+    USER_NOT_IN_GROUP("5015", "Người dùng không phải thành viên trong nhóm!", HttpStatus.BAD_REQUEST),
 
     // --- Role / Permission ---
     ROLE_NAME_ALREADY_EXISTED("5201", "Tên vai trò đã tồn tại!", HttpStatus.BAD_REQUEST),
@@ -161,6 +166,7 @@ public enum ResponseCode {
     TRANSGROUP_CREATION_REQUEST_ALREADY_EXISTED("5307", "Yêu cầu tạo nhóm dịch đã tồn tại!", HttpStatus.BAD_REQUEST),
     TRANSGROUP_CREATION_REQUEST_STATUS_INVALID("5308", "Yêu cầu tạo nhóm dịch đã được chấp nhận hoặc bị từ chối!", HttpStatus.BAD_REQUEST),
     TRANSGROUP_ALREADY_DELETED("5309", "Nhóm dịch đã bị xoá!", HttpStatus.BAD_REQUEST),
+    TRANSGROUP_IS_THE_LAST_GROUP_OF_MANGA("5310", "Truyện phải có ít nhất 1 nhóm dịch!", HttpStatus.BAD_REQUEST),
 
     // ------ Manga ----------
     MANGA_MUST_HAVE_GROUP("5401", "Truyện phải có ít nhất 1 nhóm dịch!", HttpStatus.BAD_REQUEST),

@@ -28,6 +28,7 @@ public interface UserMapper {
     @Mapping(target = "username", ignore = true)
     @Mapping(target = "avatar", ignore = true)
     @Mapping(target = "email", ignore = true)
+    @Mapping(target = "status", ignore = true)
     @Mapping(target = "transGroup", ignore = true)
     @Mapping(target = "transGroups", ignore = true)
     @Mapping(target = "roles", ignore = true)

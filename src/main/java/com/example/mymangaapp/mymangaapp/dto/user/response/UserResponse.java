@@ -29,6 +29,7 @@ public class UserResponse {
     String discord;
     String avatar;
     String bio;
+    String status;
     Set<RoleSummaryResponse> roles;
     TransGroupSummaryResponse transGroup;
     Instant createdAt;

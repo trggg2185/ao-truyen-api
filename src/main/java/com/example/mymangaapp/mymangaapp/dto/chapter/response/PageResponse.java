@@ -3,8 +3,6 @@ package com.example.mymangaapp.mymangaapp.dto.chapter.response;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
-import java.time.Instant;
-
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
@@ -15,7 +13,5 @@ public class PageResponse {
     String id;
     Integer pageNumber;
     String imageUrl;
-    Instant createdAt;
-    Instant updatedAt;
 
 }

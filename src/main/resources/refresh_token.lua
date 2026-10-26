@@ -28,7 +28,7 @@ local now = tonumber(redis.call('TIME')[1])
 if data[3] then
     -- nếu gtrị tg (now - usedAt) <= grace period time (trong thời gian ân hạn) thì cho phép gọi lại
     if now - tonumber(data[3]) <= tonumber(ARGV[1]) then
-        return 'GRACE|' .. data[1]
+        return 'GRACE|' .. data[1] .. '|' .. data[2]
     end
     return 'REUSED|' .. data[1] .. '|' .. data[2] -- ngược lại có thể bị attack -> revoke family
 end

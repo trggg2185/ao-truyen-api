@@ -33,16 +33,13 @@ public final class StorageKeysUtils {
     public static String avatar(String userId) {
         return avatarPrefix(userId) + newFileName();
     }
-
     public static String avatarPrefix(String userId) {
-        return USER_PREFIX + userId + "/" + AVATAR_PREFIX;
+        return userPrefix(userId) + AVATAR_PREFIX;
     }
+    public static String userPrefix(String userId) { return USER_PREFIX + userId + "/"; }
 
     // path r2 cho avatar của nhóm dịch: groups/groupId/avatars/uuid.webp
-    public static String groupAvatar(String groupId) {
-        return groupAvatarPrefix(groupId) + newFileName();
-    }
-
+    public static String groupAvatar(String groupId) { return groupAvatarPrefix(groupId) + newFileName(); }
     public static String groupAvatarPrefix(String groupId) {
         return GROUP_PREFIX + groupId + "/" + AVATAR_PREFIX;
     }
@@ -51,7 +48,6 @@ public final class StorageKeysUtils {
     public static String groupCover(String groupId) {
         return groupCoverPrefix(groupId) + newFileName();
     }
-
     public static String groupCoverPrefix(String groupId) {
         return GROUP_PREFIX + groupId + "/" + COVER_IMAGE_PREFIX;
     }
@@ -60,10 +56,10 @@ public final class StorageKeysUtils {
     public static String mangaCover(String mangaId) {
         return mangaCoverPrefix(mangaId) + newFileName();
     }
-
     public static String mangaCoverPrefix(String mangaId) {
-        return MANGA_PREFIX + mangaId + "/" + COVER_IMAGE_PREFIX;
+        return mangaPrefix(mangaId) + COVER_IMAGE_PREFIX;
     }
+    public static String mangaPrefix(String mangaId) { return MANGA_PREFIX + mangaId + "/"; }
 
     public static String chapterPrefix(String mangaId, String chapterId) {
         return MANGA_PREFIX + mangaId + "/" + CHAPTER_PREFIX + chapterId + "/";

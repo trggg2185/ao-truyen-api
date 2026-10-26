@@ -30,12 +30,13 @@ import java.util.concurrent.ExecutorService;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-@FieldDefaults(level = AccessLevel.PRIVATE)
+@FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class StorageService {
 
-    private final ObjectStorage storage;
-    private final ImageProcessor imageProcessor;
-    private final ExecutorService storageExecutor;   // tên field trùng tên bean bên dưới
+    ObjectStorage storage;
+    ImageProcessor imageProcessor;
+    ExecutorService storageExecutor;   // tên field trùng tên bean bên dưới
+    StorageCleanup storageCleanup;
 
     @PreAuthorize("hasAnyRole('ADMIN', 'TRANSLATOR')")
     public String uploadTmpFile(@NonNull MultipartFile file) {
@@ -97,24 +98,6 @@ public class StorageService {
         }
     }
 
-    // ---- private ----
-
-    private String doUploadTmp(MultipartFile file) {
-        try {
-            byte[] bytes = imageProcessor.optimize(file);
-            return put(StorageKeysUtils.tmp(), bytes);
-        } catch (IOException | SdkException e) {
-            log.error("Upload file tmp thất bại: {}", file.getOriginalFilename(), e);
-            throw new AppException(ResponseCode.FILE_UPLOAD_FAILED);
-        }
-    }
-
-    private String put(String key, byte[] bytes) {
-        storage.put(key, bytes, ImageProcessor.OUTPUT_CONTENT_TYPE);
-        log.info("Upload ảnh thành công!");
-        return storage.toPublicUrl(key);
-    }
-
     /**
      * Chuyển 1 file duy nhất từ tmp/ sang vị trí chính thức (Dùng cho Ảnh Cover Manga, Avatar User...)
      */
@@ -135,7 +118,7 @@ public class StorageService {
         List<String> tmpKeys = resolveTmpKeys(tmpUrls);
 
         // 2. Đăng ký dọn rác trên R2 nếu Transaction rollback
-        registerDeleteOnRollback(destKeys);
+        storageCleanup.registerDeleteOnRollback(destKeys);
 
         // 3. Tiến hành copy file
         try {
@@ -157,6 +140,24 @@ public class StorageService {
         return destKeys.stream().map(storage::toPublicUrl).toList();
     }
 
+    // -------------------------------------- private methods --------------------------------------
+
+    private String doUploadTmp(MultipartFile file) {
+        try {
+            byte[] bytes = imageProcessor.optimize(file);
+            return put(StorageKeysUtils.tmp(), bytes);
+        } catch (IOException | SdkException e) {
+            log.error("Upload file tmp thất bại: {}", file.getOriginalFilename(), e);
+            throw new AppException(ResponseCode.FILE_UPLOAD_FAILED);
+        }
+    }
+
+    private String put(String key, byte[] bytes) {
+        storage.put(key, bytes, ImageProcessor.OUTPUT_CONTENT_TYPE);
+        log.info("Upload ảnh thành công!");
+        return storage.toPublicUrl(key);
+    }
+
     // Url -> key, và chỉ chấp nhận file nằm trong tmp/
     private List<String> resolveTmpKeys(List<String> tmpUrls) {
         return tmpUrls.stream()
@@ -168,27 +169,6 @@ public class StorageService {
                     return key;
                 })
                 .toList();
-    }
-
-    private void registerDeleteOnRollback(List<String> keys) {
-        // Kiểm tra xem luồng hiện tại có đang nằm trong 1 Transaction thật hay không
-        if (!TransactionSynchronizationManager.isActualTransactionActive()) {
-            return;
-        }
-
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-            @Override
-            public void afterCompletion(int status) {
-                if (status == STATUS_COMMITTED) return;
-
-                try {
-                    storage.deleteFiles(keys);
-                    log.warn("Transaction không commit, đã dọn {} file trên R2", keys.size());
-                } catch (Exception e) {
-                    log.error("Không dọn được {} file rác trên R2, key đầu tiên {}", keys.size(), keys.getFirst(), e);
-                }
-            }
-        });
     }
 
 }

@@ -25,6 +25,7 @@ public class CurrentUserResponse {
     String email;
     String facebook;
     String discord;
+    String status;
     String bio;
     String avatar;
     Instant createdAt; // ngày tham gia (ngày tạo tk)

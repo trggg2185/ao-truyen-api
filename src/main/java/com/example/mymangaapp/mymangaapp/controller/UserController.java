@@ -74,6 +74,19 @@ public class UserController {
 
     }
 
+    // tự user xoá chính tài khoản của mình
+    @DeleteMapping("/users/me")
+    @RateLimit(capacity = 10, limitType = LimitType.USER_ID)
+    public ApiResponse<Void> deleteMyAccount() {
+
+        userService.deleteMyAccount();
+
+        return ApiResponse.<Void>builder()
+                .code(ResponseCode.SUCCESS.getCode())
+                .message(ResponseCode.SUCCESS.getMessage())
+                .build();
+    }
+
 
     // ---------------------------- endpoints cho admin --------------------------------- //
 
@@ -119,19 +132,25 @@ public class UserController {
                 .build();
     }
 
+    @PatchMapping("/admin/users/{userId}/ban")
+    public ApiResponse<Void> banUser(@PathVariable @NonNull String userId) {
 
-    // ---------------------------endpoint cho admin hoặc user --------------------------- //
+        userService.banUser(userId);
 
-    // xoá user bằng id
-    @DeleteMapping("/admin/users/{id}")
-    @RateLimit(capacity = 10, limitType = LimitType.USER_ID)
-    public ApiResponse<DeleteUserResponse> deleteUserById(@PathVariable @NonNull String id) {
-
-        userService.deleteUserById(id);
-
-        return ApiResponse.<DeleteUserResponse>builder()
+        return ApiResponse.<Void>builder()
+                .code(ResponseCode.SUCCESS.getCode())
                 .message(ResponseCode.SUCCESS.getMessage())
-                .result(DeleteUserResponse.builder().userId(id).build())
+                .build();
+    }
+
+    @PatchMapping("/admin/users/{userId}/unban")
+    public ApiResponse<Void> unbanUser(@PathVariable @NonNull String userId) {
+
+        userService.unbanUser(userId);
+
+        return ApiResponse.<Void>builder()
+                .code(ResponseCode.SUCCESS.getCode())
+                .message(ResponseCode.SUCCESS.getMessage())
                 .build();
     }
 

@@ -19,8 +19,12 @@ public class UserSecurity {
             return true;
         }
 
-        String id = SecurityUtils.getCurrentUserId();
-        return userId.equals(id);
+        return isSelf(userId);
+    }
+
+    public boolean isSelf(String userId) {
+        String currentUserId = SecurityUtils.getCurrentUserId();
+        return currentUserId.equals(userId);
     }
 
 }

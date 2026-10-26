@@ -4,6 +4,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 import com.example.mymangaapp.mymangaapp.entity.Role;
+import com.example.mymangaapp.mymangaapp.enums.UserStatus;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -38,6 +39,11 @@ public class CustomUserDetailsService implements UserDetailsService {
                 .findForAuthByUsername(username)
                 .orElseThrow(() -> new AppException(ResponseCode.UNAUTHENTICATED));
 
+        // user ko active thì loại
+        if (!user.getStatus().equals(UserStatus.ACTIVE)) {
+            throw new AppException(ResponseCode.UNAUTHENTICATED);
+        }
+
         // Ta sẽ nạp tất cả các roles và permissions mà user có vào đây
         Set<GrantedAuthority> authorities = new HashSet<>();
 
@@ -63,9 +69,15 @@ public class CustomUserDetailsService implements UserDetailsService {
 
     @Transactional(readOnly = true)
     public CustomUserDetails loadUserById(String userId) {
+
         User user = userRepository
                 .findForAuthById(userId)
                 .orElseThrow(() -> new AppException(ResponseCode.UNAUTHENTICATED));
+
+        // user ko active thì loại
+        if (!user.getStatus().equals(UserStatus.ACTIVE)) {
+            throw new AppException(ResponseCode.UNAUTHENTICATED);
+        }
 
         // Ta sẽ nạp tất cả các roles và permissions mà user có vào đây
         Set<GrantedAuthority> authorities = new HashSet<>();

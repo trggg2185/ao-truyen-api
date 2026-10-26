@@ -220,7 +220,7 @@ public class TransGroupService {
     public void softDeleteGroupById(@NonNull String id) {
 
         TransGroup transGroup = transGroupRepository
-                .findWithLeaderAndRoleById(id) // get leader và roles của leader luôn tí dùng
+                .findWithLeaderAndRolesById(id) // get leader và roles của leader luôn tí dùng
                 .orElseThrow(() -> new AppException(ResponseCode.TRANSGROUP_NOT_FOUND));
 
         // Check nhómdịch bị xoá chưa
@@ -228,21 +228,34 @@ public class TransGroupService {
             throw new AppException(ResponseCode.TRANSGROUP_ALREADY_DELETED);
         }
 
-        String currentUserId = SecurityUtils.getCurrentUserId();
-
-        // Phải là admin hoặc leader nhóm đang muốn xoá mới có quyền thao tác
-        if (!SecurityUtils.isAdmin() || !currentUserId.equals(transGroup.getLeader().getId())) {
+        boolean isAdmin = SecurityUtils.isAdmin();
+        boolean isLeader = SecurityUtils.getCurrentUserId().equals(transGroup.getLeader().getId());
+        // ko phải admin hoặc leader thì ko có quyền !(isAdmin || isLeader)
+        if (!isAdmin && !isLeader) {
             throw new AppException(ResponseCode.UNAUTHORIZED);
         }
 
         // Cập nhập trạng thái nhóm đã bị xoá
         transGroup.setStatus(TransGroupStatus.DELETED);
 
-        Role translatorRole = roleRepository
-                .findById(RoleConstants.TRANSLATOR)
-                .orElseThrow(() -> new AppException(ResponseCode.ROLE_NOT_FOUND));
-        // xoá role translator ra khỏi leader
-        transGroup.getLeader().getRoles().remove(translatorRole);
+        // Tìm những truyện mà nếu nhóm dịch này bị delete thì truyện sẽ ko còn nhóm nào dịch nx
+        List<String> orphanMangaIds = mangaRepository
+                .findMangaIdsWhereGroupIsLastActive(id, TransGroupStatus.APPROVED);
+
+        // Nếu có truyện mà nhóm delete thì truyện mô cồi...
+        if (!orphanMangaIds.isEmpty()) {
+            // Nếu là leader xoá nhóm thì ko cho vì nếu delete thì các truyện có
+            // mỗi nhóm này dịch mồ côi hết
+            if (isLeader) throw new AppException(ResponseCode.TRANSGROUP_IS_THE_LAST_GROUP_OF_MANGA);
+
+            // nếu là admin xoá nhóm thì log cảnh báo
+            log.warn("Admin xoá nhóm {} làm {} truyện không còn nhóm nào dịch: {}",
+                    id,
+                    orphanMangaIds.size(),
+                    orphanMangaIds);
+        }
+
+        // Nếu ko có truyện nào mô côi sau khi nhóm delete thì cứ thế mà triển
 
         // Dùng native sql xoá role translator ra khỏi các members
         // tránh xoá bằng vòng for gây n+1 query
@@ -252,7 +265,12 @@ public class TransGroupService {
         // Leader vẫn sẽ nằm trong nhóm bị xoá
         userRepository.clearTransGroupFromMembers(id);
 
-        transGroupRepository.save(transGroup);
+        // những yêu cầu nào đang xin vào nhóm này thì tự reject hết
+        groupJoinRequestRepository.rejectPendingByGroupId(id);
+
+        // xoá role translator ra khỏi leader
+        transGroup.getLeader()
+                .getRoles().removeIf(role -> RoleConstants.TRANSLATOR.equals(role.getName()));
     }
 
     // cập nhật thông tin group (name và description)
@@ -275,7 +293,7 @@ public class TransGroupService {
 
             // xoá avatar cũ của nhóm nếu có
             if (transGroup.getAvatar() != null && !transGroup.getAvatar().isEmpty()) {
-                objectStorage.deleteFilesWithPrefix(StorageKeysUtils.groupAvatarPrefix(transGroup.getId()), Instant.now());
+                objectStorage.deleteFilesWithPrefix(StorageKeysUtils.groupAvatarPrefix(transGroup.getId()), Instant.MAX);
             }
 
             // upload avatar mới của nhóm
@@ -289,7 +307,7 @@ public class TransGroupService {
 
             // xoá ảnh bìa cũ của nhóm nếu có
             if (transGroup.getCoverImageUrl() != null && !transGroup.getCoverImageUrl().isEmpty()) {
-                objectStorage.deleteFilesWithPrefix(StorageKeysUtils.groupCoverPrefix(transGroup.getId()), Instant.now());
+                objectStorage.deleteFilesWithPrefix(StorageKeysUtils.groupCoverPrefix(transGroup.getId()), Instant.MAX);
             }
 
             String groupCoverUrl = storageService.uploadGroupCover(transGroup.getId(), request.getCoverFile());

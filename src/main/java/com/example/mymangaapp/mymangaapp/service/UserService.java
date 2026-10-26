@@ -10,10 +10,13 @@ import com.example.mymangaapp.mymangaapp.dto.user.response.PublicUserProfileResp
 import com.example.mymangaapp.mymangaapp.dto.user.response.UserSummaryResponse;
 import com.example.mymangaapp.mymangaapp.entity.TransGroup;
 import com.example.mymangaapp.mymangaapp.enums.TransGroupStatus;
+import com.example.mymangaapp.mymangaapp.enums.UserStatus;
 import com.example.mymangaapp.mymangaapp.mapper.TransGroupMapper;
 import com.example.mymangaapp.mymangaapp.repository.TransGroupRepository;
+import com.example.mymangaapp.mymangaapp.repository.UserIdentityRepository;
 import com.example.mymangaapp.mymangaapp.security.utils.SecurityUtils;
 import com.example.mymangaapp.mymangaapp.service.storage.ObjectStorage;
+import com.example.mymangaapp.mymangaapp.service.storage.StorageCleanup;
 import com.example.mymangaapp.mymangaapp.service.storage.StorageService;
 import com.example.mymangaapp.mymangaapp.utils.StorageKeysUtils;
 import com.example.mymangaapp.mymangaapp.utils.UUIDUtils;
@@ -23,7 +26,6 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.lang.NonNull;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 
 import com.example.mymangaapp.mymangaapp.dto.user.request.UserUpdateRequest;
@@ -39,8 +41,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import org.springframework.transaction.annotation.Transactional;
 
-@Slf4j
-@Service
+@Service @Slf4j
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 @Transactional(readOnly = true)
@@ -48,6 +49,7 @@ public class UserService {
 
     UserRepository userRepository;
     TransGroupRepository transGroupRepository;
+    UserIdentityRepository userIdentityRepository;
 
     // Map từ đối tượng này sang đối tượng khác nhanh chóng
     UserMapper userMapper;
@@ -56,6 +58,9 @@ public class UserService {
     ObjectStorage objectStorage;
 
     StorageService storageService;
+    RefreshTokenService refreshTokenService;
+
+    StorageCleanup storageCleanup;
 
 
     // ---------------------------------- chức năng cho khách ---------------------------------------------------- //
@@ -116,7 +121,7 @@ public class UserService {
             // nếu user có avatar cũ thì xoá trc đã, nếu ko có thì thôi upload avatar mới luôn rồi set
             if (user.getAvatar() != null && !user.getAvatar().isEmpty()) {
                 String prefix =  StorageKeysUtils.avatarPrefix(user.getId());
-                objectStorage.deleteFilesWithPrefix(prefix, Instant.now());
+                objectStorage.deleteFilesWithPrefix(prefix, Instant.MAX);
             }
 
             // sau mới upload avatar mới
@@ -126,6 +131,47 @@ public class UserService {
         }
 
         return userMapper.toCurrentUserResponse(userRepository.save(user));
+    }
+
+    // chỉ xoá được tài khoản của chính mình
+    @Transactional
+    public void deleteMyAccount() {
+
+        String currentUserId = SecurityUtils.getCurrentUserId();
+
+        User user = userRepository
+                .findWithRolesById(currentUserId)
+                .orElseThrow(() -> new AppException(ResponseCode.USER_NOT_FOUND));
+
+        // Nếu user mà admin đang cập nhật cũng là admin thì ko cho phép
+        if (userRepository.hasRole(currentUserId, RoleConstants.ADMIN)) {
+            throw new AppException(ResponseCode.CANNOT_MODIFY_ADMIN);
+        }
+
+        // Nếu user đang là leader 1 nhóm thì ko cho xoá, phải chuyển quyền leader trước khi xoá
+        if (transGroupRepository.existsByLeaderIdAndStatus(currentUserId, TransGroupStatus.APPROVED)) {
+            throw new AppException(ResponseCode.USER_IS_GROUP_LEADER);
+        }
+
+        user.setStatus(UserStatus.DELETED);
+        user.setUsername("deleted_" + currentUserId.substring(0, 8));
+        user.setDisplayName(null);
+        user.setEmail(null);
+        user.setBio(null);
+        user.setFacebook(null);
+        user.setDiscord(null);
+        user.setAvatar(null);
+        user.setTransGroup(null);
+        user.getRoles().clear();
+
+        // xoá bên bảng user identity
+        userIdentityRepository.deleteAllByUserId(currentUserId);
+
+        // revoke toàn bộ họ token mà user đang giữ
+        refreshTokenService.revokeAllForUser(currentUserId);
+
+        // dọn thư mục user trên r2
+        storageCleanup.deletePrefixAfterCommit(StorageKeysUtils.userPrefix(currentUserId));
     }
 
 
@@ -179,7 +225,7 @@ public class UserService {
             // nếu user có avatar cũ thì xoá trc đã, nếu ko có thì thôi upload avatar mới luôn rồi set
             if (user.getAvatar() != null && !user.getAvatar().isEmpty()) {
                 String prefix = StorageKeysUtils.avatarPrefix(user.getId());
-                objectStorage.deleteFilesWithPrefix(prefix, Instant.now());
+                objectStorage.deleteFilesWithPrefix(prefix, Instant.MAX);
             }
 
             // sau mới upload avatar mới
@@ -191,24 +237,41 @@ public class UserService {
         return userMapper.toUserResponse(userRepository.save(user));
     }
 
-
-    // --------------------------- chức năng cho admin hoặc user -------------------------- //
-
-    // Xoá user bằng id, admin xoá đc mọi user, user chỉ xoá đc chính mình
+    // Ban user, user sẽ không đăng nhập đc, dữ liệu vẫn giữ
+    // admin có thể gỡ ban user
     @Transactional
-    @PreAuthorize("@userSec.isSelfOrAdmin(#id)")
-    public void deleteUserById(@NonNull String id) {
+    public void banUser(String userId) {
 
-        if (!userRepository.existsById(id)) {
-            throw new AppException(ResponseCode.USER_NOT_FOUND);
-        }
+        User user = userRepository
+                .findById(userId)
+                .orElseThrow(() -> new AppException(ResponseCode.USER_NOT_FOUND));
 
-        // Nếu user mà admin đang cập nhật cũng là admin thì ko cho phép
-        if (userRepository.hasRole(id, RoleConstants.ADMIN)) {
+        // ko cho phép ban admin khác cũng như chính mình
+        if (userRepository.hasRole(userId, RoleConstants.ADMIN)) {
             throw new AppException(ResponseCode.CANNOT_MODIFY_ADMIN);
         }
 
-        userRepository.deleteById(id);
+        // Chuyển trạng thái ban
+        user.setStatus(UserStatus.BANNED);
+
+        // revoke toàn bộ họ token mà user đang giữ
+        refreshTokenService.revokeAllForUser(userId);
+    }
+
+    @Transactional
+    public void unbanUser(String userId) {
+
+        User user = userRepository
+                .findById(userId)
+                .orElseThrow(() -> new AppException(ResponseCode.USER_NOT_FOUND));
+
+        // ko cho phép ban admin khác cũng như chính mình
+        if (userRepository.hasRole(userId, RoleConstants.ADMIN)) {
+            throw new AppException(ResponseCode.CANNOT_MODIFY_ADMIN);
+        }
+
+        // Chuyển trạng thái active
+        user.setStatus(UserStatus.ACTIVE);
     }
 
 }

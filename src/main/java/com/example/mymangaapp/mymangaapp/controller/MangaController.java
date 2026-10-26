@@ -52,18 +52,17 @@ public class MangaController {
                 .build();
     }
 
-    @DeleteMapping("/transgroups/{groupId}/mangas/{mangaId}")
+    @DeleteMapping("/mangas/{mangaId}")
     @RateLimit(capacity = 10, limitType = LimitType.USER_ID)
     public ApiResponse<DeleteMangaResponse> deleteMangaById(
-            @PathVariable @NonNull String groupId,
             @PathVariable @NonNull String mangaId
     ) {
 
-        mangaService.deleteMangaById(groupId, mangaId);
+        mangaService.deleteMangaById(mangaId);
 
         return ApiResponse.<DeleteMangaResponse>builder()
                 .message(ResponseCode.SUCCESS.getMessage())
-                .result(DeleteMangaResponse.builder().groupId(groupId).mangaId(mangaId).build())
+                .result(DeleteMangaResponse.builder().mangaId(mangaId).build())
                 .build();
     }
 

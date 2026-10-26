@@ -5,6 +5,7 @@ import com.example.mymangaapp.mymangaapp.dto.auth.request.IntrospectRequest;
 import com.example.mymangaapp.mymangaapp.dto.auth.response.IntrospectResponse;
 import com.example.mymangaapp.mymangaapp.entity.User;
 import com.example.mymangaapp.mymangaapp.enums.AuthProvider;
+import com.example.mymangaapp.mymangaapp.enums.UserStatus;
 import com.example.mymangaapp.mymangaapp.exception.AppException;
 import com.example.mymangaapp.mymangaapp.exception.ResponseCode;
 import com.example.mymangaapp.mymangaapp.repository.UserRepository;
@@ -136,6 +137,12 @@ public class AuthService {
 
         User user = userRepository.findForAuthById(rotation.userId())
                 .orElseThrow(() -> new AppException(ResponseCode.UNAUTHENTICATED));
+
+        // Check nếu user bị banned thì revoke tất cả họ token, và throw
+        if (!user.getStatus().equals(UserStatus.ACTIVE)) {
+            refreshTokenService.revokeAllForUser(rotation.userId());
+            throw new AppException(ResponseCode.USER_BANNED);
+        }
 
         return tokenService.build(user, rotation.newRefreshToken());
     }

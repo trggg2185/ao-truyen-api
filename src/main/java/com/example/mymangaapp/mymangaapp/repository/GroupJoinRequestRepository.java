@@ -4,6 +4,9 @@ import com.example.mymangaapp.mymangaapp.entity.GroupJoinRequest;
 import com.example.mymangaapp.mymangaapp.enums.GroupJoinRequestStatus;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.lang.NonNull;
 
 import java.util.List;
@@ -35,6 +38,14 @@ public interface GroupJoinRequestRepository extends JpaRepository<GroupJoinReque
     boolean existsByTransGroupIdAndUserIdAndStatus(String groupId, String userId, GroupJoinRequestStatus status);
 
     boolean existsByUserIdAndStatus(String userId, GroupJoinRequestStatus status);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("""
+            UPDATE GroupJoinRequest r
+            SET r.status = REJECTED
+            WHERE r.status = PENDING AND r.transGroup.id = :groupId
+    """)
+    void rejectPendingByGroupId(@Param("groupId") String groupId);
 
     @EntityGraph(attributePaths = { "transGroup", "user" })
     Optional<GroupJoinRequest> findByTransGroupIdAndUserIdAndStatus(

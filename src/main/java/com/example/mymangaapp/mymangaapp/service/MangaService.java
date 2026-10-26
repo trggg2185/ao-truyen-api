@@ -23,6 +23,7 @@ import com.example.mymangaapp.mymangaapp.repository.MangaRepository;
 import com.example.mymangaapp.mymangaapp.repository.TransGroupRepository;
 import com.example.mymangaapp.mymangaapp.security.utils.SecurityUtils;
 import com.example.mymangaapp.mymangaapp.service.storage.ObjectStorage;
+import com.example.mymangaapp.mymangaapp.service.storage.StorageCleanup;
 import com.example.mymangaapp.mymangaapp.service.storage.StorageService;
 import com.example.mymangaapp.mymangaapp.utils.SlugUtils;
 import com.example.mymangaapp.mymangaapp.utils.StorageKeysUtils;
@@ -64,6 +65,8 @@ public class MangaService {
 
     StorageService storageService;
     SequenceCounterService sequenceCounterService;
+
+    StorageCleanup storageCleanup;
 
 
     // ----------------------------chức năng dành cho leader nhóm ---------------------------------//
@@ -168,7 +171,7 @@ public class MangaService {
             if (manga.getCoverImageUrl() != null) {
                 String prefix = StorageKeysUtils.mangaCoverPrefix(manga.getId());
 
-                objectStorage.deleteFilesWithPrefix(prefix, Instant.now());
+                objectStorage.deleteFilesWithPrefix(prefix, Instant.MAX);
             }
 
             // copy từ tmp sang mangas/mangaId/cover/anh-bia.webp
@@ -235,19 +238,25 @@ public class MangaService {
 
     // xoá truyện theo id
     @Transactional
-    @PreAuthorize("hasRole('ADMIN') or @groupSec.isGroupLeader(#groupId)")
-    public void deleteMangaById(@NonNull String groupId, @NonNull String mangaId) {
+    public void deleteMangaById(@NonNull String mangaId) {
 
-        if (!mangaRepository.existsById(mangaId)) {
-            throw new AppException(ResponseCode.MANGA_NOT_FOUND);
-        }
+        Manga manga = mangaRepository
+                .findForUpdateById(mangaId) // dùng method có lock để tránh ghi cùng lúc
+                .orElseThrow(() -> new AppException(ResponseCode.MANGA_NOT_FOUND));
 
-        // check manga có thật là của nhóm dịch này ko
-        if (!mangaRepository.isMangaTranslatedByGroup(groupId, mangaId, TransGroupStatus.APPROVED)) {
+        String currentUserId = SecurityUtils.getCurrentUserId();
+        // chỉ admin hoặc leader của bất kỳ nhóm dịch truyện này mới cho qua
+        if (!SecurityUtils.isAdmin() && !mangaRepository.isLeaderOfManga(currentUserId, manga.getId(), TransGroupStatus.APPROVED)) {
             throw new AppException(ResponseCode.UNAUTHORIZED);
         }
 
-        mangaRepository.deleteById(mangaId);
+        mangaRepository.deletePagesById(manga.getId());
+        mangaRepository.deleteChaptersById(manga.getId());
+        mangaRepository.deleteCategoryLinks(manga.getId());
+        mangaRepository.deleteGroupLinks(manga.getId());
+        mangaRepository.deleteRowById(manga.getId());
+
+        storageCleanup.deletePrefixAfterCommit(StorageKeysUtils.mangaPrefix(manga.getId()));
     }
 
 

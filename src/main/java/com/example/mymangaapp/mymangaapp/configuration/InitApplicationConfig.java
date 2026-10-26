@@ -91,11 +91,13 @@ public class InitApplicationConfig {
                 log.info("Tạo các thể loại truyện mặc định thành công!");
             }
 
-            List<SequenceCounter> scs = List.of(
-                    SequenceCounter.builder().name(SequenceCounterConstants.MANGA).nextValue(1L).build(),
-                    SequenceCounter.builder().name(SequenceCounterConstants.TRANSGROUP).nextValue(1L).build()
-            );
-            sequenceCounterRepository.saveAll(scs);
+            if (sequenceCounterRepository.count() == 0) {
+                List<SequenceCounter> scs = List.of(
+                        SequenceCounter.builder().name(SequenceCounterConstants.MANGA).nextValue(1L).build(),
+                        SequenceCounter.builder().name(SequenceCounterConstants.TRANSGROUP).nextValue(1L).build()
+                );
+                sequenceCounterRepository.saveAll(scs);
+            }
 
             log.info(".................Init application ends...................");
         };

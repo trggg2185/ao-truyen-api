@@ -20,6 +20,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.HashSet;
+import java.util.Optional;
 import java.util.Set;
 
 @Service
@@ -38,16 +39,32 @@ public class SocialAccountService {
     @Transactional
     public String findOrCreateUserId(ExternalIdentity externalIdentity) {
 
-        // Nếu đã từng liên kết với email thì đăng nhập vào user đó
-        return identityRepository.findUserId(externalIdentity.getProvider(), externalIdentity.getProviderUserId())
-                .orElseGet(() -> createUser(externalIdentity));
+        Optional<String> userIdOpt = identityRepository
+                .findUserId(externalIdentity.getProvider(), externalIdentity.getProviderUserId());
+
+        // Nếu có user thì xét
+        if (userIdOpt.isPresent()) {
+
+            // nếu user bị banned thì throw
+            if (userRepository.isUserBannedById(userIdOpt.get()))
+                throw new AppException(ResponseCode.USER_BANNED);
+            else // ko thì trả về userId
+                return userIdOpt.get();
+        }
+
+        // nếu ko có userid thì tạo user mới
+        return createUser(externalIdentity);
     }
 
     private String createUser(ExternalIdentity externalIdentity) {
 
         String email = externalIdentity.isEmailVerified() ? externalIdentity.getEmail() : null;
 
-        if (email != null && userRepository.existsByEmail(email)) {
+        if (email == null) {
+            throw new AppException(ResponseCode.EMAIL_REQUIRED);
+        }
+
+        if (userRepository.existsByEmail(email)) {
             throw new AppException(ResponseCode.EMAIL_USED_BY_ANOTHER_LOGIN_METHOD);
         }
 

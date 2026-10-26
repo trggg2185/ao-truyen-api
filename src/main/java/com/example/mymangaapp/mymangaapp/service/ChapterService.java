@@ -6,15 +6,13 @@ import com.example.mymangaapp.mymangaapp.dto.chapter.response.ChapterSummaryResp
 import com.example.mymangaapp.mymangaapp.dto.common.PaginatedResponse;
 import com.example.mymangaapp.mymangaapp.entity.Chapter;
 import com.example.mymangaapp.mymangaapp.entity.Page;
-import com.example.mymangaapp.mymangaapp.enums.TransGroupStatus;
 import com.example.mymangaapp.mymangaapp.exception.AppException;
 import com.example.mymangaapp.mymangaapp.exception.ResponseCode;
 import com.example.mymangaapp.mymangaapp.mapper.ChapterMapper;
 import com.example.mymangaapp.mymangaapp.repository.ChapterRepository;
 import com.example.mymangaapp.mymangaapp.repository.MangaRepository;
-import com.example.mymangaapp.mymangaapp.security.utils.SecurityUtils;
 import com.example.mymangaapp.mymangaapp.service.storage.ImageProcessor;
-import com.example.mymangaapp.mymangaapp.service.storage.ObjectStorage;
+import com.example.mymangaapp.mymangaapp.service.storage.StorageCleanup;
 import com.example.mymangaapp.mymangaapp.service.storage.StorageService;
 import com.example.mymangaapp.mymangaapp.utils.StorageKeysUtils;
 import lombok.AccessLevel;
@@ -30,7 +28,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -48,12 +45,11 @@ public class ChapterService {
     PageService pageService;
     StorageService storageService;
 
-    ObjectStorage objectStorage;
+    StorageCleanup storageCleanup;
 
+    // ------------------chức năng dành cho admin hoặc thành viên của các nhóm dịch truyện này------------------------//
 
-    // ------------------chức năng dành cho translator hoặc admin nhưng vẫn phải là thành viên của nhóm mới được------------------------//
-
-    @PreAuthorize("hasAnyRole('ADMIN', 'TRANSLATOR')")
+    @PreAuthorize("@chapterSec.canMofifyChapter(#mangaId)")
     @Transactional
     public ChapterResponse createChapter(@NonNull String mangaId, @NonNull ChapterRequest request) {
 
@@ -61,7 +57,6 @@ public class ChapterService {
         if (!mangaRepository.existsById(mangaId)) {
             throw new AppException(ResponseCode.MANGA_NOT_FOUND);
         }
-        checkCanCreateChapter(mangaId);
 
         // Kiểm tra nhanh để báo lỗi sớm (không bắt buộc, chỉ để đỡ tốn một lần insert)
         if (chapterRepository.existsByMangaIdAndChapterIndex(mangaId, request.getChapterIndex())) {
@@ -93,7 +88,7 @@ public class ChapterService {
         return chapterMapper.toChapterResponse(chapter);
     }
 
-    @PreAuthorize("hasAnyRole('ADMIN', 'TRANSLATOR')")
+    @PreAuthorize("@chapterSec.canMofifyChapter(#mangaId)")
     @Transactional
     public void deleteChapterById(@NonNull String mangaId, @NonNull String chapterId) {
 
@@ -106,27 +101,16 @@ public class ChapterService {
             throw new AppException(ResponseCode.UNAUTHORIZED);
         }
 
-        String currentUserId = SecurityUtils.getCurrentUserId();
-
-        // user phải là thành viên hoặc leader của các nhóm đang dịch truyện này
-        // và nhóm dịch phải hoạt động thì mới được tạo chương
-        if (!mangaRepository.isMemberOrLeaderOfAnyGroupOfManga(currentUserId, mangaId, TransGroupStatus.APPROVED)) {
-            throw new AppException(ResponseCode.UNAUTHORIZED);
-        }
-
         // xoá chapter có cascade và orphanremoval nên page thuộc
         // về chapter cũng sẽ tự động xoá
         chapterRepository.delete(chapter);
 
-        String prefix = StorageKeysUtils.chapterPrefix(mangaId, chapterId);
-
-        // gọi xoá tất cả files trong prefix
-        objectStorage.deleteFilesWithPrefix(prefix, Instant.now());
-
+        // Sau khi transaction commit xoá các chapter trong db thì xoá các files trong prefix trên r2
+        storageCleanup.deletePrefixAfterCommit(StorageKeysUtils.chapterPrefix(mangaId, chapterId));
     }
 
 
-    // ------------------------------chức năng public (cho khách)---------------------------------//
+    // ------------------------------------chức năng public (cho khách)-----------------------------------------//
 
     // user thì ai cx vào manga bất kỳ và đều đọc đc các chapters
     // ==> để public method này
@@ -151,12 +135,6 @@ public class ChapterService {
 
     // -----------------------------------------private method----------------------------------------------------//
 
-    private void checkCanCreateChapter(String mangaId) {
-        String userId = SecurityUtils.getCurrentUserId();
-        if (!mangaRepository.isMemberOrLeaderOfAnyGroupOfManga(userId, mangaId, TransGroupStatus.APPROVED)) {
-            throw new AppException(ResponseCode.UNAUTHORIZED);
-        }
-    }
 
     // tạo chương và lưu xuống db luôn để lấy id cho các pages
     private Chapter insertChapter(Chapter chapter) {

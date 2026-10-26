@@ -23,7 +23,7 @@ public interface TransGroupRepository extends JpaRepository<TransGroup, String> 
     Optional<TransGroup> findWithDetailsBySlug(String slug);
 
     @EntityGraph(attributePaths = { "leader", "leader.roles" })
-    Optional<TransGroup> findWithLeaderAndRoleById(String id);
+    Optional<TransGroup> findWithLeaderAndRolesById(String id);
 
     @EntityGraph(attributePaths = { "members" })
     Optional<TransGroup> findWithMembersById(String id);

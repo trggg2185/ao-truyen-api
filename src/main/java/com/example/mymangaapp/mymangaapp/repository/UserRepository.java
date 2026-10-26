@@ -18,6 +18,9 @@ public interface UserRepository extends JpaRepository<User, String> {
     boolean existsByUsername(String username);
     boolean existsByEmail(String email);
 
+    @Query("SELECT COUNT(u.id) > 0 FROM User u WHERE u.id = :userId AND u.status = BANNED")
+    boolean isUserBannedById(String userId);
+
     @Query("""
             SELECT COUNT(u) > 0
             FROM User u

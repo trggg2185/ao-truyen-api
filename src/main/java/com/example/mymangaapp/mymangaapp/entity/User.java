@@ -3,14 +3,11 @@ package com.example.mymangaapp.mymangaapp.entity;
 import java.util.List;
 import java.util.Set;
 
+import com.example.mymangaapp.mymangaapp.enums.UserStatus;
 import jakarta.persistence.*;
+import lombok.*;
 import lombok.experimental.SuperBuilder;
 
-import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
 import lombok.experimental.FieldDefaults;
 
 @Getter
@@ -56,6 +53,11 @@ public class User extends BaseEntity {
 
     @Column(length = 500)
     String avatar; // url của avatar
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, columnDefinition = "VARCHAR(15) DEFAULT 'ACTIVE'")
+    @Builder.Default
+    UserStatus status = UserStatus.ACTIVE;
 
     // QH: Nhiều user có thể thuộc về 1 trans group
     @ManyToOne(fetch = FetchType.LAZY)

@@ -3,6 +3,7 @@ package com.example.mymangaapp.mymangaapp.repository;
 import com.example.mymangaapp.mymangaapp.entity.UserIdentity;
 import com.example.mymangaapp.mymangaapp.enums.AuthProvider;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -16,5 +17,10 @@ public interface UserIdentityRepository extends JpaRepository<UserIdentity, Stri
     boolean existsByProviderAndProviderUserId(AuthProvider provider, String providerUserId);
 
     boolean existsByUserIdAndProvider(String userId, AuthProvider provider);
+
+    // Xoá tất cả danh tính người dùng bằng user id
+    @Modifying
+    @Query("DELETE FROM UserIdentity i WHERE i.user.id = :userId")
+    void deleteAllByUserId(@Param("userId") String userId);
 
 }

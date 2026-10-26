@@ -4,7 +4,6 @@ import java.util.Set;
 
 import com.example.mymangaapp.mymangaapp.enums.TransGroupStatus;
 import com.example.mymangaapp.mymangaapp.utils.SlugUtils;
-import com.github.slugify.Slugify;
 import jakarta.persistence.*;
 
 import lombok.*;

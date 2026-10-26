@@ -23,6 +23,7 @@ public class PublicUserProfileResponse {
     String bio;
     String facebook;
     String discord;
+    String status;
     Instant createdAt;
     TransGroupSummaryResponse transGroup; // Group đang tham gia
 

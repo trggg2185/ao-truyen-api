@@ -26,6 +26,7 @@ public class RefreshTokenService {
 
     static String TOKEN_PREFIX = "mymangaapp:refresh:token:";
     static String FAMILY_PREFIX = "mymangaapp:refresh:family:";
+    static String USER_PREFIX = "mymangaapp:refresh:user:";
     static SecureRandom RANDOM = new SecureRandom();
 
     StringRedisTemplate redisTemplate;
@@ -72,7 +73,14 @@ public class RefreshTokenService {
             // refresh token chưa dùng thì đánh dấu là dùng và rồi trả refresh token mới
             case "OK" -> new Rotation(p[1], create(p[1], p[2]));
 
-            case "GRACE" -> new Rotation(p[1], null);
+            case "GRACE" -> {
+                // Check phiên còn sống ko (họ token còn trong redis ko)
+                if (Boolean.FALSE.equals(redisTemplate.hasKey(FAMILY_PREFIX + p[2]))) {
+                    throw new AppException(ResponseCode.UNAUTHENTICATED);
+                }
+
+                yield new Rotation(p[1], null);
+            }
             // refresh bị dùng rồi mà gửi lại là nghi attack thì revoke cả họ
             default -> {
                 log.warn("Refresh token bị dùng lại, thu hồi toàn bộ phiên, userId={}, familyId={}", p[1], p[2]);
@@ -93,18 +101,41 @@ public class RefreshTokenService {
         if (familyId != null) revokeFamily(familyId.toString());
     }
 
+    // khi user tự xoá acc của mình thì revoke hết toàn bộ các họ token mà user đang giữ
+    public void revokeAllForUser(String userId) {
+        String key = USER_PREFIX + userId;
+
+        // Lấy tất cả các họ mà user này đang giữ
+        Set<String> families = redisTemplate.opsForSet().members(key);
+        if (families != null) {
+            families.forEach(this::revokeFamily); // revoke toàn bộ các họ mà user đang giữ
+        }
+        redisTemplate.delete(key); // rồi xoá luôn key này
+    }
+
     // ------------------------private methods ---------------------------------
 
-    // lần đầu đăng nhập sẽ tạo mới 1 refresh token (lưu xuống redis sau khi encode bằng sha256) và 1 family id (là 1 UUID ngẫu nhiên)
+    // đăng nhập sẽ tạo mới 1 refresh token (lưu xuống redis sau khi encode bằng sha256) và 1 family id (là 1 UUID ngẫu nhiên)
     // và trả về cho client 1 refresh token dạng raw
     private String create(String userId, String familyId) {
         String raw = randomToken();
         String hash = sha256(raw);
         String tokenKey = TOKEN_PREFIX + hash;
+        String familyKey = FAMILY_PREFIX + familyId;
+        String userKey = USER_PREFIX + userId;
 
+        // set refresh token key chứa user id và family id, set thời gian sống
         redisTemplate.opsForHash().putAll(tokenKey, Map.of("userId", userId, "familyId", familyId));
         redisTemplate.expire(tokenKey, refreshTtl);
-        redisTemplate.opsForValue().set(FAMILY_PREFIX + familyId, hash, refreshTtl);
+
+        // set family key chứa hash của refresh token
+        redisTemplate.opsForValue().set(familyKey, hash, refreshTtl);
+
+        // Set thêm hiện tại user đang giữ họ token nào
+        // cứ mỗi lần đăng nhập mới vào là thêm 1 family id vào
+        // chỉ đến khi user xoá account của chính mình mới revoke toàn bộ, rồi xoá luôn key này
+        redisTemplate.opsForSet().add(userKey, familyId);
+        redisTemplate.expire(userKey, refreshTtl);
         return raw;
     }
 
