@@ -20,34 +20,27 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
-@Slf4j @Transactional(readOnly = true)
+@Slf4j
+@Transactional(readOnly = true)
 public class CategoryService {
 
     CategoryRepository categoryRepository;
     CategoryMapper categoryMapper;
 
-
     // ---------------------------------chức năng public (cho khách) --------------------------------- //
 
-    // public endpoint
+    // Dùng thẳng DTO-based Projection từ Repository, không cần kéo Entity Category lên rồi map
     public List<CategoryResponse> getAllCategories() {
-        return categoryRepository.findAll().stream()
-                .map(categoryMapper::toCategoryResponse)
-                .toList();
+        return categoryRepository.findAllResponses();
     }
 
-    // public
     public CategoryResponse getCategoryById(@NonNull Long id) {
-        Category category = categoryRepository.findById(id)
+        return categoryRepository.findResponseById(id)
                 .orElseThrow(() -> new AppException(ResponseCode.CATEGORY_NOT_FOUND));
-
-        return categoryMapper.toCategoryResponse(category);
     }
-
 
     // ---------------------------------chức năng của admin ---------------------------------
 
-    // admin
     @Transactional
     public CategoryResponse createCategory(@NonNull CategoryRequest request) {
         if (categoryRepository.existsByName(request.getName().trim())) {
@@ -60,7 +53,6 @@ public class CategoryService {
         return categoryMapper.toCategoryResponse(categoryRepository.save(category));
     }
 
-    // admin
     @Transactional
     public CategoryResponse updateCategoryById(@NonNull Long id, @NonNull CategoryRequest request) {
         Category category = categoryRepository.findById(id)
@@ -79,13 +71,11 @@ public class CategoryService {
         return categoryMapper.toCategoryResponse(categoryRepository.save(category));
     }
 
-    // admin
     @Transactional
     public void deleteCategoryById(@NonNull Long id) {
         if (!categoryRepository.existsById(id)) {
             throw new AppException(ResponseCode.CATEGORY_NOT_FOUND);
         }
-
         categoryRepository.deleteById(id);
     }
 

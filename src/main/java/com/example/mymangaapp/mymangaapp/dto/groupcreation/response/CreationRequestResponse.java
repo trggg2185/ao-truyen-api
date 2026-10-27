@@ -1,6 +1,7 @@
 package com.example.mymangaapp.mymangaapp.dto.groupcreation.response;
 
 import lombok.*;
+import com.example.mymangaapp.mymangaapp.enums.GroupCreationRequestStatus;
 import lombok.experimental.FieldDefaults;
 
 import java.time.Instant;
@@ -15,7 +16,7 @@ public class CreationRequestResponse {
     String id;
     String groupName;
     String creatorName;
-    String status;
+    GroupCreationRequestStatus status;
     String description;
     Instant updatedAt;
 

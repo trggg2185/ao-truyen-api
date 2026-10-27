@@ -1,5 +1,6 @@
 package com.example.mymangaapp.mymangaapp.repository;
 
+import com.example.mymangaapp.mymangaapp.dto.groupjoin.response.JoinRequestResponse;
 import com.example.mymangaapp.mymangaapp.entity.GroupJoinRequest;
 import com.example.mymangaapp.mymangaapp.enums.GroupJoinRequestStatus;
 import org.springframework.data.jpa.repository.EntityGraph;
@@ -14,26 +15,37 @@ import java.util.Optional;
 
 public interface GroupJoinRequestRepository extends JpaRepository<GroupJoinRequest, String> {
 
-    @EntityGraph(attributePaths = { "transGroup", "user" })
-    @NonNull
-    List<GroupJoinRequest> findAll();
-
-    // Lấy ds các yc của 1 nhóm dịch theo trạng thái yc đó
-    @EntityGraph(attributePaths = { "transGroup", "user" })
-    List<GroupJoinRequest> findAllByTransGroupIdAndStatus(String groupId, GroupJoinRequestStatus status);
-
-    @EntityGraph(attributePaths = { "transGroup", "user" })
-    List<GroupJoinRequest> findAllByTransGroupId(String groupId);
+    /*
+     * DTO-based Projection thay thế cho 4 hàm @EntityGraph(attributePaths = {"transGroup", "user"}) cũ
+     * (findAllByUserId, findAllByUserIdAndStatus, findAllByTransGroupId, findAllByTransGroupIdAndStatus).
+     *
+     * Cách hoạt động:
+     * - JOIN 3 bảng (group_join_request, trans_group, user) nhưng chỉ rút ra đúng các cột tóm tắt
+     *   và truyền vào constructor phẳng của JoinRequestResponse.
+     * - Không khởi tạo 3 Entity cho mỗi dòng kết quả và không cần chạy stream().map(mapper) ở Service.
+     */
+    @Query("""
+            SELECT new com.example.mymangaapp.mymangaapp.dto.groupjoin.response.JoinRequestResponse(
+                r.id, r.status, r.createdAt, r.updatedAt,
+                g.id, g.name, g.slug, g.avatar,
+                u.id, u.username, u.displayName, u.avatar, u.status
+            )
+            FROM GroupJoinRequest r
+            JOIN r.transGroup g
+            JOIN r.user u
+            WHERE (:userId IS NULL OR u.id = :userId)
+              AND (:groupId IS NULL OR g.id = :groupId)
+              AND (:status IS NULL OR r.status = :status)
+            ORDER BY r.createdAt DESC
+    """)
+    List<JoinRequestResponse> findResponses(
+            @Param("userId") String userId,
+            @Param("groupId") String groupId,
+            @Param("status") GroupJoinRequestStatus status);
 
     @EntityGraph(attributePaths = { "transGroup", "user" })
     @NonNull
     Optional<GroupJoinRequest> findWithDetailsById(@NonNull String id);
-
-    @EntityGraph(attributePaths = { "transGroup", "user" })
-    List<GroupJoinRequest> findAllByUserId(String userId);
-
-    @EntityGraph(attributePaths = { "transGroup", "user" })
-    List<GroupJoinRequest> findAllByUserIdAndStatus(String userId, GroupJoinRequestStatus status);
 
     boolean existsByTransGroupIdAndUserIdAndStatus(String groupId, String userId, GroupJoinRequestStatus status);
 

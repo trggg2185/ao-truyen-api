@@ -1,14 +1,15 @@
 package com.example.mymangaapp.mymangaapp.service;
 
 import com.example.mymangaapp.mymangaapp.constant.SequenceCounterConstants;
+import com.example.mymangaapp.mymangaapp.dto.category.response.CategoryResponse;
+import com.example.mymangaapp.mymangaapp.dto.common.PaginatedResponse;
 import com.example.mymangaapp.mymangaapp.dto.manga.request.MangaCreationRequest;
 import com.example.mymangaapp.mymangaapp.dto.manga.request.MangaUpdateRequest;
-import com.example.mymangaapp.mymangaapp.dto.manga.response.MangaDetailsResponse;
 import com.example.mymangaapp.mymangaapp.dto.manga.response.MangaManagementResponse;
 import com.example.mymangaapp.mymangaapp.dto.manga.response.MangaResponse;
-import com.example.mymangaapp.mymangaapp.dto.common.PaginatedResponse;
 import com.example.mymangaapp.mymangaapp.dto.manga.response.MangaSummaryResponse;
 import com.example.mymangaapp.mymangaapp.dto.transgroup.response.TransGroupManagementResponse;
+import com.example.mymangaapp.mymangaapp.dto.transgroup.response.TransGroupSummaryResponse;
 import com.example.mymangaapp.mymangaapp.entity.Category;
 import com.example.mymangaapp.mymangaapp.entity.Manga;
 import com.example.mymangaapp.mymangaapp.entity.TransGroup;
@@ -17,10 +18,11 @@ import com.example.mymangaapp.mymangaapp.enums.TransGroupStatus;
 import com.example.mymangaapp.mymangaapp.exception.AppException;
 import com.example.mymangaapp.mymangaapp.exception.ResponseCode;
 import com.example.mymangaapp.mymangaapp.mapper.MangaMapper;
-import com.example.mymangaapp.mymangaapp.mapper.TransGroupMapper;
 import com.example.mymangaapp.mymangaapp.repository.CategoryRepository;
 import com.example.mymangaapp.mymangaapp.repository.MangaRepository;
 import com.example.mymangaapp.mymangaapp.repository.TransGroupRepository;
+import com.example.mymangaapp.mymangaapp.repository.projection.MangaCategoryProjection;
+import com.example.mymangaapp.mymangaapp.repository.projection.MangaTransGroupProjection;
 import com.example.mymangaapp.mymangaapp.security.utils.SecurityUtils;
 import com.example.mymangaapp.mymangaapp.service.storage.ObjectStorage;
 import com.example.mymangaapp.mymangaapp.service.storage.StorageCleanup;
@@ -42,9 +44,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -59,22 +59,16 @@ public class MangaService {
     CategoryRepository categoryRepository;
 
     MangaMapper mangaMapper;
-    TransGroupMapper transGroupMapper;
 
     ObjectStorage objectStorage;
-
     StorageService storageService;
     SequenceCounterService sequenceCounterService;
-
     StorageCleanup storageCleanup;
-
 
     // ----------------------------chức năng dành cho leader nhóm ---------------------------------//
 
-    // tạo mới 1 truyện, dành cho leader
     @Transactional
     public MangaResponse createManga(@NonNull MangaCreationRequest request) {
-
         String currentUserId = SecurityUtils.getCurrentUserId();
 
         TransGroup myGroup = transGroupRepository
@@ -82,23 +76,18 @@ public class MangaService {
                 .orElseThrow(() -> new AppException(ResponseCode.TRANSGROUP_NOT_FOUND));
 
         Set<String> groupIds = new HashSet<>();
-        groupIds.add(myGroup.getId()); // mặc định có nhóm của ng đg tạo truyện
+        groupIds.add(myGroup.getId());
 
-        // Nếu có mảng nhóm thì add hết vào, set chống trùng
         if (request.getTransGroups() != null) {
             groupIds.addAll(request.getTransGroups());
         }
 
-        // find tất cả các groups bằng ids và phải đc duyệt hết r
         List<TransGroup> transGroups = transGroupRepository.findAllByIdInAndStatus(groupIds, TransGroupStatus.APPROVED);
-
         if (transGroups.isEmpty() || transGroups.size() != groupIds.size()) {
             throw new AppException(ResponseCode.TRANSGROUP_NOT_FOUND);
         }
 
         List<Category> categories = categoryRepository.findAllById(request.getCategoryIds());
-
-        // check 1 là ko thấy category nào, 2 là có vài category ko tồn tại thì bắn exception
         if (categories.isEmpty() || categories.size() != request.getCategoryIds().size()) {
             throw new AppException(ResponseCode.CATEGORY_NOT_FOUND);
         }
@@ -107,21 +96,15 @@ public class MangaService {
         manga.setCategories(new HashSet<>(categories));
         manga.setTransGroups(new HashSet<>(transGroups));
 
-        // Lấy số thứ tự của truyện
         long sequenceNumber = sequenceCounterService.next(SequenceCounterConstants.MANGA);
-
-        // Tạo slug = name-number
         String slug = SlugUtils.generateSlug(manga.getName(), sequenceNumber);
 
         manga.setSequenceNumber(sequenceNumber);
         manga.setSlug(slug);
-
         manga = mangaRepository.save(manga);
 
         if (request.getCoverImageUrl() != null && !request.getCoverImageUrl().isEmpty()) {
-            // copy từ tmp sang mangas/mangaId/cover/anh-bia.webp
             String coverDestKey = StorageKeysUtils.mangaCover(manga.getId());
-
             String finalCoverUrl = storageService.promoteTmpFile(request.getCoverImageUrl(), coverDestKey);
             manga.setCoverImageUrl(finalCoverUrl);
         }
@@ -129,19 +112,15 @@ public class MangaService {
         return mangaMapper.toMangaResponse(mangaRepository.save(manga));
     }
 
-    // cập nhật info truyện
     @Transactional
-    // check quyền vừa là leader, vừa phải trong nhóm dịch truyện này và vừa nhóm phải APPROVED
     @PreAuthorize("@mangaSec.isLeaderOfManga(#mangaId)")
     public MangaResponse updateMangaById(@NonNull String mangaId, @NonNull MangaUpdateRequest request) {
-
         Manga manga = mangaRepository
                 .findWithDetailsById(mangaId)
                 .orElseThrow(() -> new AppException(ResponseCode.MANGA_NOT_FOUND));
 
         mangaMapper.updateMangaFromRequest(manga, request);
 
-        // Nếu tên truyệnthay đổi thì set lại slug
         if (request.getName() != null && !request.getName().isEmpty()) {
             String slug = SlugUtils.generateSlug(request.getName(), manga.getSequenceNumber());
             manga.setSlug(slug);
@@ -149,38 +128,24 @@ public class MangaService {
 
         if (request.getCategoryIds() != null && !request.getCategoryIds().isEmpty()) {
             List<Category> categories = categoryRepository.findAllById(request.getCategoryIds());
-
-            // check 1 là ko thấy category nào, 2 là có vài category ko tồn tại thì bắn exception
             if (categories.isEmpty() || categories.size() != request.getCategoryIds().size()) {
                 throw new AppException(ResponseCode.CATEGORY_NOT_FOUND);
             }
 
             Set<Category> currentCategories = manga.getCategories();
             Set<Category> newCategories = new HashSet<>(categories);
-
-            // Xoá categories ko nằm trong ds mới
             currentCategories.removeIf(category -> !newCategories.contains(category));
-
-            // thêm những categories mới
             currentCategories.addAll(newCategories);
         }
 
         if (request.getCoverImageUrl() != null && !request.getCoverImageUrl().isEmpty()) {
-
-            // Nếu có ảnh bìa cũ thì xoá
             if (manga.getCoverImageUrl() != null) {
                 String prefix = StorageKeysUtils.mangaCoverPrefix(manga.getId());
-
                 objectStorage.deleteFilesWithPrefix(prefix, Instant.MAX);
             }
 
-            // copy từ tmp sang mangas/mangaId/cover/anh-bia.webp
             String coverDestKey = StorageKeysUtils.mangaCover(manga.getId());
-
             String finalCoverUrl = storageService.promoteTmpFile(request.getCoverImageUrl(), coverDestKey);
-
-            log.info(coverDestKey);
-            log.info(finalCoverUrl);
             manga.setCoverImageUrl(finalCoverUrl);
         }
 
@@ -189,63 +154,62 @@ public class MangaService {
         return mangaMapper.toMangaResponse(mangaRepository.save(manga));
     }
 
-    // Đây là endpoint dành cho leader nhóm để get manga ra chỉnh sửa
-    // trả về response khác so với response trên hàm getMangaById
+    /*
+     * Lấy chi tiết truyện cho Leader chỉnh sửa (GET /mangas/{mangaId}/management):
+     * Kết hợp DTO-based Projection (findManagementById) và Interface-based Projection
+     * (findCategoryProjectionsByMangaIds + findTransGroupProjectionsByMangaIds) thay vì dùng @EntityGraph.
+     */
     public MangaManagementResponse getMangaForManagementById(@NonNull String mangaId) {
-
         String currentUserId = SecurityUtils.getCurrentUserId();
 
-        // Check có phải user này là leader nhóm dịch truyện này ko (nhóm phải đg hoạt động)
         if (!mangaRepository.isLeaderOfManga(currentUserId, mangaId, TransGroupStatus.APPROVED)) {
             throw new AppException(ResponseCode.UNAUTHORIZED);
         }
 
-        Manga manga = mangaRepository
-                .findWithDetailsById(mangaId)
+        MangaManagementResponse response = mangaRepository
+                .findManagementById(mangaId)
                 .orElseThrow(() -> new AppException(ResponseCode.MANGA_NOT_FOUND));
 
-        TransGroup myGroup = transGroupRepository
-                .findByLeaderIdAndStatus(currentUserId, TransGroupStatus.APPROVED)
+        TransGroupSummaryResponse myGroup = transGroupRepository
+                .findSummaryByLeaderIdAndStatus(currentUserId, TransGroupStatus.APPROVED)
                 .orElseThrow(() -> new AppException(ResponseCode.TRANSGROUP_NOT_FOUND));
 
-        MangaManagementResponse response = mangaMapper.toMangaManagementResponse(manga);
+        Set<CategoryResponse> categories = mangaRepository
+                .findCategoryProjectionsByMangaIds(List.of(mangaId))
+                .stream()
+                .map(p -> new CategoryResponse(p.getCategoryId(), p.getName(), p.getDescription()))
+                .collect(Collectors.toSet());
+        response.setCategories(categories);
 
-        List<TransGroup> activeGroups = manga.getTransGroups().stream()
-                .filter(transGroup -> transGroup.getStatus().equals(TransGroupStatus.APPROVED))
+        List<MangaTransGroupProjection> activeGroups = mangaRepository
+                .findTransGroupProjectionsByMangaIds(List.of(mangaId))
+                .stream()
+                .filter(g -> g.getStatus() == TransGroupStatus.APPROVED)
                 .toList();
 
-        // Tính toán mảng các ds nhóm trả về xem có cờ xem leader hiện tại có thể xoá nhóm đó không
-        List<TransGroupManagementResponse> responses = activeGroups.stream()
-                .map(transGroup -> {
-                    TransGroupManagementResponse res = transGroupMapper.toTransGroupManagementResponse(transGroup);
-
-                    // Nhóm dịch được xoá khi chính user hiện tại là leader nhóm đó
-                    // và phải có từ 2 nhóm trở lên đang dịch truyện này
-                    boolean isRemovable = transGroup.getId().equals(myGroup.getId()) && activeGroups.size() > 1;
-                    res.setCanRemove(isRemovable);
-
-                    return res;
-                })
+        List<TransGroupManagementResponse> groupResponses = activeGroups.stream()
+                .map(g -> TransGroupManagementResponse.builder()
+                        .id(g.getGroupId())
+                        .name(g.getName())
+                        .slug(g.getSlug())
+                        .canRemove(g.getGroupId().equals(myGroup.getId()) && activeGroups.size() > 1)
+                        .build())
                 .toList();
 
-        response.setTransGroups(responses);
-
+        response.setTransGroups(groupResponses);
         return response;
     }
 
-
     // ----------------------------chức năng dành cho admin hoặc leader nhóm-----------------------------------
 
-    // xoá truyện theo id
     @Transactional
     public void deleteMangaById(@NonNull String mangaId) {
-
         Manga manga = mangaRepository
-                .findForUpdateById(mangaId) // dùng method có lock để tránh ghi cùng lúc
+                .findForUpdateById(mangaId)
                 .orElseThrow(() -> new AppException(ResponseCode.MANGA_NOT_FOUND));
 
         String currentUserId = SecurityUtils.getCurrentUserId();
-        // chỉ admin hoặc leader của bất kỳ nhóm dịch truyện này mới cho qua
+
         if (!SecurityUtils.isAdmin() && !mangaRepository.isLeaderOfManga(currentUserId, manga.getId(), TransGroupStatus.APPROVED)) {
             throw new AppException(ResponseCode.UNAUTHORIZED);
         }
@@ -259,59 +223,40 @@ public class MangaService {
         storageCleanup.deletePrefixAfterCommit(StorageKeysUtils.mangaPrefix(manga.getId()));
     }
 
-
     // -------------------------chức năng chỉ dành cho admin --------------------------------//
 
-    // chỉ dành cho admin
+    // Dùng DTO-based Projection truy vấn thẳng ra Page<MangaSummaryResponse>
     public PaginatedResponse<MangaSummaryResponse> getMangas(
             MangaStatus status, int page,
             int size, String sortBy
     ) {
-
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, sortBy));
-
-        Page<MangaSummaryResponse> dtoPage;
-
-        if (status != null) {
-            dtoPage = mangaRepository
-                    .findAllByStatus(status, pageable)
-                    .map(mangaMapper::toMangaSummaryResponse);
-        } else {
-            dtoPage = mangaRepository
-                    .findAll(pageable)
-                    .map(mangaMapper::toMangaSummaryResponse);
-        }
-
+        Page<MangaSummaryResponse> dtoPage = mangaRepository.findSummaries(status, pageable);
         return PaginatedResponse.of(dtoPage);
     }
-
 
     // -----------------------------chức năng public (cho khách) --------------------------------//
 
-    // lấy tất manga, public có pagination
-    // đây là khi họ vào trang home của web
-    // sẽ lấy tất cả các manga có phân trang, những chỉ lấy với
-    // chút thông tin của manga như: name, categories, description, transgroups
+    /*
+     * Lấy danh sách truyện trang chủ có phân trang (GET /mangas):
+     * 1. Gọi findPublicPage(pageable) dùng DTO-based Projection lấy đúng 24 dòng MangaResponse dưới DB.
+     * 2. Gọi populateRelations(...) dùng Interface-based Projection nạp toàn bộ categories và transGroups
+     *    của 24 bộ truyện đó chỉ bằng 2 câu query `WHERE m.id IN (...)`.
+     */
     public PaginatedResponse<MangaResponse> getMangas(int page, int size, String sortBy) {
-        
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, sortBy));
 
-        Page<MangaResponse> dtoPage = mangaRepository
-                .findAll(pageable)
-                .map(mangaMapper::toMangaResponse);
+        Page<MangaResponse> dtoPage = mangaRepository.findPublicPage(pageable);
+        populateRelations(dtoPage.getContent());
 
         return PaginatedResponse.of(dtoPage);
     }
 
-    // public
-    // đây là endpoint khi user vào trang của nhóm dịch
-    // thì lấy tất cả các bộ truyện mà nhóm đang tham gia dịch
-    // cả dịch chính lẫn phụ
+    // Lấy danh sách các bộ truyện mà nhóm đang tham gia dịch bằng DTO-based Projection
     public PaginatedResponse<MangaSummaryResponse> getMangasByGroupId(
             @NonNull String groupId, int page,
             int size, @NonNull String sortBy
     ) {
-
         if (!transGroupRepository.existsById(groupId)) {
             throw new AppException(ResponseCode.TRANSGROUP_NOT_FOUND);
         }
@@ -319,45 +264,89 @@ public class MangaService {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, sortBy));
 
         Page<MangaSummaryResponse> dtoPage = mangaRepository
-                .findAllByGroupMembershipId(groupId, pageable)
-                .map(mangaMapper::toMangaSummaryResponse);
+                .findSummariesByGroupId(groupId, pageable);
 
         return PaginatedResponse.of(dtoPage);
     }
 
-    // public
-    // đây là khi user nhấn chi tiết 1 manga
-    // manga sẽ get toàn bộ info, có cả các chapter luôn
-    public MangaDetailsResponse getMangaByIdOrSlug(@NonNull String idOrSlug) {
-
-        // này phải dùng method select toàn bộ thông tin manga có cả chapter
-        Manga manga = UUIDUtils.isUuid(idOrSlug)
+    /*
+     * Xem chi tiết 1 bộ truyện theo ID hoặc Slug (GET /mangas/{idOrSlug}):
+     * Đã xoá MangaDetailsResponse dư thừa và hợp nhất vào MangaResponse.
+     * Dùng DTO-based Projection kết hợp Interface-based Projection để không tạo Cartesian Product.
+     */
+    public MangaResponse getMangaByIdOrSlug(@NonNull String idOrSlug) {
+        MangaResponse response = UUIDUtils.isUuid(idOrSlug)
                 ? mangaRepository
-                        .findWithDetailsById(idOrSlug)
+                        .findProjectedById(idOrSlug)
                         .orElseThrow(() -> new AppException(ResponseCode.MANGA_NOT_FOUND))
                 : mangaRepository
-                        .findWithDetailsBySlug(idOrSlug)
+                        .findProjectedBySlug(idOrSlug)
                         .orElseThrow(() -> new AppException(ResponseCode.MANGA_NOT_FOUND));
 
-        return mangaMapper.toMangaDetailsResponse(manga);
+        populateRelations(List.of(response));
+        return response;
     }
 
-
     // --------------------------method private --------------------------------------
+
+    /*
+     * Hàm phụ trợ nạp batch categories và transGroups cho danh sách MangaResponse
+     * thông qua 2 Interface-based Projection (MangaCategoryProjection & MangaTransGroupProjection).
+     *
+     * Cách hoạt động:
+     * - Thu thập toàn bộ mangaIds từ danh sách DTO.
+     * - Bắn 1 câu SQL lấy tất cả cặp (mangaId, Category) -> gom nhóm vào Map<String, Set<CategoryResponse>>.
+     * - Bắn 1 câu SQL lấy tất cả cặp (mangaId, TransGroup) -> gom nhóm vào Map<String, List<TransGroupSummaryResponse>>.
+     * - Gán ngược vào từng phần tử MangaResponse trong bộ nhớ với độ phức tạp O(1) tra cứu Map.
+     */
+    private void populateRelations(List<MangaResponse> mangas) {
+        if (mangas.isEmpty()) {
+            return;
+        }
+
+        List<String> mangaIds = mangas.stream()
+                .map(MangaResponse::getId)
+                .toList();
+
+        Map<String, Set<CategoryResponse>> categoriesByMangaId = mangaRepository
+                .findCategoryProjectionsByMangaIds(mangaIds)
+                .stream()
+                .collect(Collectors.groupingBy(
+                        MangaCategoryProjection::getMangaId,
+                        Collectors.mapping(
+                                p -> new CategoryResponse(p.getCategoryId(), p.getName(), p.getDescription()),
+                                Collectors.toSet()
+                        )
+                ));
+
+        Map<String, List<TransGroupSummaryResponse>> groupsByMangaId = mangaRepository
+                .findTransGroupProjectionsByMangaIds(mangaIds)
+                .stream()
+                .collect(Collectors.groupingBy(
+                        MangaTransGroupProjection::getMangaId,
+                        Collectors.mapping(
+                                p -> new TransGroupSummaryResponse(p.getGroupId(), p.getName(), p.getSlug(), p.getAvatar()),
+                                Collectors.toList()
+                        )
+                ));
+
+        for (MangaResponse manga : mangas) {
+            manga.setCategories(categoriesByMangaId.getOrDefault(manga.getId(), Collections.emptySet()));
+            manga.setTransGroups(groupsByMangaId.getOrDefault(manga.getId(), Collections.emptyList()));
+        }
+    }
 
     private void addGroups(Manga manga, Set<String> addIds) {
         if (addIds == null || addIds.isEmpty())
             return;
 
-        // lấy nhóm đang dịch truyện này
         Set<String> existingIds = manga.getTransGroups()
                 .stream()
-                .map(TransGroup::getId) // <=> transgroup -> transgroup.getId()
+                .map(TransGroup::getId)
                 .collect(Collectors.toSet());
 
-        // đây là các nhóm dịch mới thêm
         Set<String> newIds = new HashSet<>(addIds);
-        newIds.removeAll(existingIds); // xoá nhóm cũ đi
+        newIds.removeAll(existingIds);
 
         if (newIds.isEmpty())
             return;
@@ -368,7 +357,6 @@ public class MangaService {
         if (newTransGroups.size() != newIds.size())
             throw new AppException(ResponseCode.TRANSGROUP_NOT_FOUND);
 
-        // add tất cả nhóm mới vào
         manga.getTransGroups().addAll(newTransGroups);
     }
 

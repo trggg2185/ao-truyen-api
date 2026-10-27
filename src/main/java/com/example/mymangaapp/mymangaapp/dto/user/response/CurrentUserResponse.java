@@ -7,6 +7,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import com.example.mymangaapp.mymangaapp.enums.UserStatus;
 import lombok.experimental.FieldDefaults;
 
 @Data
@@ -25,7 +26,7 @@ public class CurrentUserResponse {
     String email;
     String facebook;
     String discord;
-    String status;
+    UserStatus status;
     String bio;
     String avatar;
     Instant createdAt; // ngày tham gia (ngày tạo tk)

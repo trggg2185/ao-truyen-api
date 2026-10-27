@@ -54,11 +54,11 @@ public class TransGroupController {
 
     @GetMapping("/transgroups/{idOrSlug}")
     @RateLimit(capacity = 60, limitType = LimitType.USER_ID)
-    public ApiResponse<TransGroupDetailsResponse> getGroupByIdOrSlug(@PathVariable @NonNull String idOrSlug) {
+    public ApiResponse<TransGroupResponse> getGroupByIdOrSlug(@PathVariable @NonNull String idOrSlug) {
 
-        TransGroupDetailsResponse response = transGroupService.getGroupByIdOrSlug(idOrSlug);
+        TransGroupResponse response = transGroupService.getGroupByIdOrSlug(idOrSlug);
 
-        return ApiResponse.<TransGroupDetailsResponse>builder()
+        return ApiResponse.<TransGroupResponse>builder()
                 .result(response)
                 .build();
     }

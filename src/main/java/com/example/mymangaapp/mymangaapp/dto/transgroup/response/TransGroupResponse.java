@@ -1,6 +1,7 @@
 package com.example.mymangaapp.mymangaapp.dto.transgroup.response;
 
 import com.example.mymangaapp.mymangaapp.dto.user.response.UserSummaryResponse;
+import com.example.mymangaapp.mymangaapp.enums.TransGroupStatus;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
@@ -14,7 +15,8 @@ import java.util.Set;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class TransGroupResponse {
 
-    // response transgroup để xem chi tiết thì ổn hơn
+    // Response chi tiết của nhóm dịch (thay thế luôn cho TransGroupDetailsResponse cũ bị dư thừa).
+    // Danh sách truyện của nhóm được tách sang endpoint phân trang riêng: GET /transgroups/{groupId}/mangas.
 
     String id;
     UserSummaryResponse leader;
@@ -22,7 +24,7 @@ public class TransGroupResponse {
     String slug;
     String avatar;
     String coverImageUrl;
-    String status;
+    TransGroupStatus status;
     Set<UserSummaryResponse> members;
     String description;
     Instant createdAt;

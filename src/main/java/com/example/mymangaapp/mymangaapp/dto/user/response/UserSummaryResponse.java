@@ -1,6 +1,7 @@
 package com.example.mymangaapp.mymangaapp.dto.user.response;
 
 import lombok.*;
+import com.example.mymangaapp.mymangaapp.enums.UserStatus;
 import lombok.experimental.FieldDefaults;
 
 @Data
@@ -16,5 +17,5 @@ public class UserSummaryResponse {
     String username;
     String displayName;
     String avatar;
-    String status;
+    UserStatus status;
 }

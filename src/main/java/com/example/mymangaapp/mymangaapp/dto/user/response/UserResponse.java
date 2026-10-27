@@ -5,6 +5,7 @@ import java.util.Set;
 
 import com.example.mymangaapp.mymangaapp.dto.role.response.RoleSummaryResponse;
 import com.example.mymangaapp.mymangaapp.dto.transgroup.response.TransGroupSummaryResponse;
+import com.example.mymangaapp.mymangaapp.enums.UserStatus;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -29,7 +30,7 @@ public class UserResponse {
     String discord;
     String avatar;
     String bio;
-    String status;
+    UserStatus status;
     Set<RoleSummaryResponse> roles;
     TransGroupSummaryResponse transGroup;
     Instant createdAt;

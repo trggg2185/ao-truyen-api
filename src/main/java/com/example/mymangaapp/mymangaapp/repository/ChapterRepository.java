@@ -14,25 +14,27 @@ import java.util.Optional;
 
 public interface ChapterRepository extends JpaRepository<Chapter, String> {
 
-    @EntityGraph(attributePaths = { "pages" })
-    Optional<Chapter> findWithPagesById(String id);
-
     @EntityGraph(attributePaths = { "manga" })
     @NonNull
     Optional<Chapter> findById(@NonNull String id);
 
-    Page<Chapter> findByMangaId(String mangaId, Pageable pageable);
-
-    // Query để lấy ds tối giản của chapter
-    // dùng user xem chi tiết truyện có kèmtheo ds chapter thay vì EntityGraph ở bên manga
+    /*
+     * DTO-based Projection (SELECT new ...):
+     * - Dùng khi user xem danh sách chương của 1 bộ truyện (GET /mangas/{mangaId}/chapters).
+     * - Chỉ SELECT đúng 5 cột cần thiết (id, chapterIndex, title, views, updatedAt), bỏ qua
+     *   việc khởi tạo Entity Chapter và không động tới danh sách pages.
+     * - Lưu ý: truyền c.updatedAt khớp đúng với trường updatedAt của ChapterSummaryResponse.
+     */
     @Query("""
-
-            SELECT new com.example.mymangaapp.mymangaapp.dto.chapter.response.ChapterSummaryResponse(c.id, c.chapterIndex, c.title, c.views, c.createdAt)
+            SELECT new com.example.mymangaapp.mymangaapp.dto.chapter.response.ChapterSummaryResponse(
+                c.id, c.chapterIndex, c.title, c.views, c.updatedAt
+            )
             FROM Chapter c
             WHERE c.manga.id = :mangaId
     """)
     Page<ChapterSummaryResponse> findSummariesByMangaId(@Param("mangaId") String mangaId, Pageable pageable);
 
-    // Check cùng 1 chapter không thể có 2 chapter index giống nhau
+    // Check cùng 1 bộ truyện không thể có 2 chương trùng chapterIndex
     boolean existsByMangaIdAndChapterIndex(String mangaId, Integer chapterIndex);
+
 }

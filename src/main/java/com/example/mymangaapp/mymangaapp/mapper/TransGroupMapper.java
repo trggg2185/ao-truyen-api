@@ -1,9 +1,14 @@
 package com.example.mymangaapp.mymangaapp.mapper;
 
 import com.example.mymangaapp.mymangaapp.dto.transgroup.request.TransGroupUpdateRequest;
-import com.example.mymangaapp.mymangaapp.dto.transgroup.response.*;
+import com.example.mymangaapp.mymangaapp.dto.transgroup.response.TransGroupResponse;
+import com.example.mymangaapp.mymangaapp.dto.transgroup.response.TransGroupSummaryResponse;
 import com.example.mymangaapp.mymangaapp.entity.TransGroup;
-import org.mapstruct.*;
+import org.mapstruct.BeanMapping;
+import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
+import org.mapstruct.MappingTarget;
+import org.mapstruct.NullValuePropertyMappingStrategy;
 
 @Mapper(componentModel = "spring")
 public interface TransGroupMapper {
@@ -11,12 +16,6 @@ public interface TransGroupMapper {
     TransGroupResponse toTransGroupResponse(TransGroup transGroup);
 
     TransGroupSummaryResponse toTransGroupSummaryResponse(TransGroup transGroup);
-
-    @Mapping(target = "translatedMangas", ignore = true)
-    TransGroupDetailsResponse toTransGroupDetailsResponse(TransGroup transGroup);
-
-    @Mapping(target = "canRemove", ignore = true)
-    TransGroupManagementResponse toTransGroupManagementResponse(TransGroup transGroup);
 
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "leader", ignore = true)
@@ -30,4 +29,5 @@ public interface TransGroupMapper {
     @Mapping(target = "createdAt", ignore = true)
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     void updateTransGroupFromRequest(@MappingTarget TransGroup transGroup, TransGroupUpdateRequest request);
+
 }

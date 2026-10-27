@@ -1,341 +1,104 @@
-# My Manga App
+# Ảo Truyện API (`mymangaapp`)
 
-Backend REST API for a manga-reading and translation-group platform. It lets readers
-browse manga, read chapters, and discover translation groups, lets users apply to join
-or create a translation group, and gives admins review and management tools.
+Backend REST API cho nền tảng đọc truyện tranh (Manga) và quản lý nhóm dịch (**Ảo Truyện API**).
+Dự án cho phép độc giả tìm kiếm, đọc truyện theo chương/trang, khám phá các nhóm dịch; hỗ trợ người dùng đăng nhập qua Google OAuth2, xin gia nhập hoặc đăng ký thành lập nhóm dịch; đồng thời cung cấp bộ công cụ quản trị cho Leader nhóm dịch và Admin.
 
-## Features
+## Tính năng chính
 
-- Registration, login, JWT introspection, refresh, and logout
-- Role- and permission-based authorization (`ADMIN`, `USER`, `TRANSLATOR`)
-- Translation groups with leader/member model, join requests, and creation requests
-- Manga, category, chapter, and page management
-- Manga and translation-group cover image URLs
-- Image upload and WebP optimization backed by Cloudflare R2
-- Redis for rate limiting, invalidated tokens, and buffered chapter views
-- Scheduled background jobs for view flushing and temporary-file cleanup
+- **Xác thực hiện đại (OAuth2 + JWT + Rotating Refresh Cookie)**:
+  - Đăng nhập/Đăng ký tự động qua Google ID Token (`POST /auth/social/google`), liên kết đa danh tính qua bảng `user_identity`.
+  - Access Token dạng JWT (HS512, ngắn hạn, lưu trên RAM frontend) kết hợp Refresh Token dạng chuỗi ngẫu nhiên 256-bit (băm SHA-256 lưu Redis, xoay vòng nguyên tử bằng Lua script `refresh_token.lua` và gắn vào `HttpOnly` cookie).
+- **Phân quyền (RBAC + Method Security)**:
+  - Phân quyền theo Role (`ADMIN`, `USER`, `TRANSLATOR`) và Permission (`CREATE_POST`, `CREATE_MANGA`, `UPDATE_MANGA`), kết hợp kiểm tra quyền sở hữu ở tầng Service (`@PreAuthorize` với `mangaSec`, `groupSec`, `chapterSec`, `userSec`).
+- **Quản lý Nhóm dịch (Translation Groups)**:
+  - Quy trình gửi yêu cầu tạo nhóm dịch (Admin duyệt), xin gia nhập nhóm dịch (Leader duyệt), trục xuất thành viên (kick), chuyển nhượng quyền Leader, xoá mềm nhóm dịch (kiểm tra truyện mồ côi trước khi xoá).
+- **Quản lý Truyện, Thể loại, Chương và Trang ảnh**:
+  - Hỗ trợ nhiều nhóm cùng dịch một bộ truyện, sinh `slug` chuẩn SEO Tiếng Việt kèm bộ đếm tuần tự (`SequenceCounter` có khoá `PESSIMISTIC_WRITE`).
+  - Truy vấn đọc (Read paths) được tối ưu hoá toàn diện bằng **DTO-based Projection (`SELECT new ...`)** và **Interface-based Projection**, loại bỏ triệt để lỗi N+1 query, Cartesian Product và lỗi phân trang trên RAM (`HHH90003004`).
+- **Xử lý ảnh & Lưu trữ đám mây (Cloudflare R2)**:
+  - Kiểm tra định dạng, chống ảnh quá khổ (Decompression Bomb protection `MAX_PIXELS`), tự động cắt tỉa/nén sang định dạng `WebP` bằng `Thumbnailator` + `webp-imageio`.
+  - Cơ chế upload tạm (`tmp/`) -> promote sang thư mục chính thức khi tạo truyện/chương, tự động xoá file rác trên R2 nếu DB transaction rollback hoặc sau khi xoá truyện/chương/tài khoản (`StorageCleanup`).
+- **Redis Caching, Rate Limiting & Buffered Views**:
+  - Chặn spam API bằng Fixed-Window Rate Limit chạy Lua script nguyên tử (`rate_limit.lua`) theo `IP` hoặc `USER_ID`.
+  - Đệm lượt xem chương truyện (chống spam view 30 phút/người đọc) trên Redis và định kỳ đồng bộ (batch flush) xuống MySQL mỗi 5 phút bằng `JdbcTemplate` (`ViewFlushScheduler`).
 
-## Tech stack
+## Công nghệ sử dụng (Tech Stack)
 
-- Java 21
-- Spring Boot 3.5.14 (Web, Validation, Security, AOP, Actuator)
-- Spring Data JPA with MySQL
-- Spring Data Redis
-- Nimbus JOSE JWT 10.5
-- MapStruct 1.6.3
-- Lombok 1.18.38
-- AWS SDK S3 2.29.15 (Cloudflare R2)
-- Slugify 2.4, Thumbnailator, WebP ImageIO
-- Maven Wrapper (`mvnw` / `mvnw.cmd`)
-- Structured API request logging with request ID/MDC; readable console logs in
-  development and JSON logs in the `prod` profile
+- **Ngôn ngữ & Framework**: Java 21, Spring Boot 3.5.14 (Web, Validation, Security, Data JPA, Data Redis, AOP, Actuator)
+- **Cơ sở dữ liệu**: MySQL, Redis
+- **Bảo mật & Xác thực**: Nimbus JOSE JWT 10.5, Google API Client 2.9.1
+- **Object Mapping & Boilerplate**: MapStruct 1.6.3, Lombok 1.18.38
+- **Lưu trữ & Xử lý ảnh**: AWS SDK S3 2.29.15 (Cloudflare R2), Thumbnailator 0.4.20, WebP ImageIO 0.1.6
+- **Tiện ích**: Slugify 3.0.7 + ICU4J 75.1
+- **Build Tool**: Maven Wrapper (`mvnw` / `mvnw.cmd`)
 
-## Requirements
+## Cấu hình biến môi trường (`.env`)
 
-- JDK 21
-- MySQL
-- Redis
-- A Cloudflare R2 bucket and credentials
+Sao chép `.env.example` thành `.env` hoặc thiết lập các biến môi trường sau trước khi chạy:
 
-## Configuration
-
-Copy `.env.example` to `.env`, or export the same variables into the process
-environment. `application.yaml` reads them through `${...}` placeholders.
-
-| Variable | Purpose |
+| Biến môi trường | Mô tả |
 | --- | --- |
-| `DB_URL` | MySQL JDBC URL |
-| `DB_PASSWORD` | MySQL password (username is hard-coded as `root`) |
-| `SIGNER_KEY` | JWT HS512 signing key |
-| `ACCESS_TOKEN_VALIDITY_IN_SECONDS` | Access-token lifetime |
-| `REFRESHABLE_DURATION_IN_SECONDS` | Window in which a token may still be refreshed |
-| `REDIS_HOST` | Redis host (default `localhost`) |
-| `REDIS_PORT` | Redis port (default `6379`) |
-| `REDIS_PASSWORD` | Redis password (default empty) |
-| `REDIS_DATABASE` | Redis logical DB (default `0`) |
-| `CLOUDFLARE_R2_ACCESS_KEY_ID` | R2 access key |
-| `CLOUDFLARE_R2_SECRET_ACCESS_KEY` | R2 secret key |
-| `CLOUDFLARE_R2_ENDPOINT_URL` | R2 S3-compatible endpoint |
-| `CLOUDFLARE_R2_BUCKET_NAME` | R2 bucket name |
-| `CLOUDFLARE_R2_PUBLIC_URL` | Public URL prefix for uploaded files (no trailing slash) |
-| `INIT_ADMIN_PASSWORD` | Password for the seeded `admin` user |
-| `INIT_USER1_PASSWORD` | Password for the seeded `trg25` user |
-| `INIT_USER2_PASSWORD` | Password for the seeded `khoa12` user |
-| `INIT_USER3_PASSWORD` | Password for the seeded `linh25` user |
+| `DB_URL` | JDBC URL kết nối MySQL |
+| `DB_PASSWORD` | Mật khẩu MySQL |
+| `REDIS_HOST` | Host của Redis (mặc định `localhost`) |
+| `REDIS_PORT` | Cổng Redis (mặc định `6379`) |
+| `REDIS_PASSWORD` | Mật khẩu Redis (mặc định rỗng) |
+| `REDIS_DATABASE` | Chỉ số DB Redis (mặc định `0`) |
+| `ADMIN_EMAIL` | Email Google được tự động cấp quyền `ADMIN` khi đăng nhập lần đầu |
+| `GOOGLE_CLIENT_ID` | Google OAuth2 Client ID |
+| `SIGNER_KEY` | Khóa bí mật ký JWT HS512 (tối thiểu 64 bytes) |
+| `ACCESS_TTL` | Thời gian sống của Access Token (VD: `15m`) |
+| `REFRESH_TTL` | Thời gian sống của Refresh Token (VD: `7d`) |
+| `REFRESH_GRACE` | Khoảng thời gian ân hạn khi xoay vòng Refresh Token (VD: `10s`) |
+| `COOKIE_SECURE` | Bật `Secure` cho cookie (`true` trên HTTPS production, `false` ở local) |
+| `CLOUDFLARE_R2_ACCESS_KEY_ID` | Access Key của Cloudflare R2 |
+| `CLOUDFLARE_R2_SECRET_ACCESS_KEY` | Secret Key của Cloudflare R2 |
+| `CLOUDFLARE_R2_ENDPOINT_URL` | S3 Endpoint URL của R2 |
+| `CLOUDFLARE_R2_BUCKET_NAME` | Tên R2 Bucket |
+| `CLOUDFLARE_R2_PUBLIC_URL` | Tên miền CDN công khai của R2 (không có dấu `/` ở cuối) |
 
-`.env` is git-ignored. Never commit real credentials, signing keys, passwords, or
-tokens.
+## Cách chạy dự án
 
-## Running
-
-From the repository root on Windows:
+Từ thư mục gốc của dự án:
 
 ```powershell
+# Chạy ứng dụng ở môi trường phát triển
 .\mvnw.cmd spring-boot:run
-```
 
-Build and test:
+# Biên dịch kiểm tra lỗi
+.\mvnw.cmd clean compile
 
-```powershell
+# Đóng gói file JAR
 .\mvnw.cmd clean package
-.\mvnw.cmd test
 ```
 
-The project includes an API logging filter unit test and a Spring context-load smoke
-test. The context test requires the external configuration above (DB, Redis, R2,
-initial passwords) to be available.
+Base URL mặc định tại local: `http://localhost:8080/mymangaapp`
 
-## Project structure
+## Cấu trúc thư mục
 
 ```text
 src/main/java/com/example/mymangaapp/mymangaapp/
   annotation/       @RateLimit
-  aop/              Rate-limit aspect
-  configuration/    Startup seeding, async executor, MDC task decorator
-  constant/         Role name constants
-  controller/       REST controllers
-  dto/
-    common/         ApiResponse, PaginatedResponse
-    auth/           request/ and response/
-    user/           request/ and response/
-    manga/          request/ and response/
-    chapter/        request/ and response/
-    category/       request/ and response/
-    transgroup/     request/ and response/
-    groupcreation/  request/ and response/
-    groupjoin/      response/
-    role/           request/ and response/
-    permission/     request/ and response/
-  entity/           JPA entities
-  enums/            Domain enums
+  aop/              RateLimitAspect
+  configuration/    InitApplicationConfig, AsyncConfig, MdcTaskDecorator
+  constant/         RoleConstants, SequenceCounterConstants
+  controller/       REST Controllers
+  dto/              Request/Response DTOs theo từng module
+  entity/           JPA Entities (kế thừa BaseEntity)
+  enums/            Domain Enums
   exception/        AppException, ResponseCode, GlobalExceptionHandler
-  filter/           API request/response logging filter
-  mapper/           MapStruct mappers
-  repository/       Spring Data repositories
-  scheduler/        View-flush and storage-cleanup jobs
-  security/         JWT, filters, CORS, Redis, R2, password, rate-limit config
-  service/          Business logic (incl. service/storage/)
-  utils/            HTTP, logging sanitization, and storage-key helpers
-
-src/main/resources/
-  application.yaml  Runtime configuration
-  rate_limit.lua    Atomic Redis fixed-window rate-limit script
-  logback-spring.xml  Dev console/prod JSON async logging configuration
+  filter/           ApiLoggingFilter
+  mapper/           MapStruct Mappers
+  repository/       Spring Data JPA Repositories & DTO Projections
+    projection/     Interface-based Projections (MangaCategoryProjection, MangaTransGroupProjection)
+  scheduler/        ViewFlushScheduler, StorageCleanupScheduler
+  security/         JWT, OAuth2 Google Verifier, Cookie, Security & Redis/R2 Configs
+  service/          Business Logic Services (bao gồm auth/ và storage/)
+  utils/            HttpUtils, SlugUtils, StorageKeysUtils, UsernameGenerator, UUIDUtils
 ```
 
-The servlet context path is `/mymangaapp` and the server port is `8080`, so the local
-base URL is:
+## Tài liệu liên quan trong kho mã nguồn
 
-```text
-http://localhost:8080/mymangaapp
-```
-
-## API conventions
-
-### Response wrapper
-
-Every response uses `ApiResponse<T>`, and null fields are omitted:
-
-```json
-{
-  "code": "0000",
-  "message": "Thành công!",
-  "result": {}
-}
-```
-
-`code` defaults to `"0000"` for success. Errors use the same wrapper with a four-digit
-`ResponseCode` and its mapped HTTP status. See `exception/ResponseCode.java` for the
-full list; error codes are treated as a stable client contract and are not renumbered.
-
-### Pagination
-
-Paginated endpoints take `page` (0-based), `size`, and `sortBy` query parameters.
-Services build `PageRequest.of(page, size, Sort.by(DESC, sortBy))`. Responses use
-`PaginatedResponse<T>`, whose `currentPage` is one-based (Spring's zero-based index
-plus one):
-
-```json
-{
-  "currentPage": 1,
-  "pageSize": 24,
-  "totalPages": 4,
-  "totalElements": 75,
-  "content": []
-}
-```
-
-### Authentication
-
-The API is stateless. Send the access token on protected routes:
-
-```http
-Authorization: Bearer <access-token>
-```
-
-Public read routes are approved groups, manga, chapter/page, and category reads.
-Public write routes are the `/auth/**` operations. All other routes require a token,
-and `/admin/**` requires the `ADMIN` role. Business ownership rules (self-or-admin,
-group leader, manga group membership) are enforced in services with `@PreAuthorize`.
-
-### API logging
-
-`ApiLoggingFilter` runs first for every request. It validates or generates
-`X-Request-ID`, returns that ID in the response header, adds request metadata to MDC,
-and logs method, path, query, status, duration, user ID, client IP, user-agent, and
-error message. Successful requests are `INFO`, 4xx responses are `WARN`, and 5xx
-responses are `ERROR` with the exception when available. Passwords, JWTs, refresh
-tokens, secrets, and request/response bodies are never logged. MDC is cleared after
-each request and propagated to async tasks through `MdcTaskDecorator`.
-
-### Endpoint groups
-
-```text
-POST   /auth/register    POST /auth/login       POST /auth/introspect
-POST   /auth/logout      POST /auth/refresh
-
-GET    /users/me         PATCH /users/me (multipart)     PATCH /users/me/password
-GET    /admin/users      POST /admin/users      GET /admin/users/{id}
-PATCH  /admin/users/{id} (multipart)             DELETE /admin/users/{id}
-
-GET    /categories       GET  /categories/{id}
-POST   /admin/categories PATCH /admin/categories/{id}    DELETE /admin/categories/{id}
-
-GET    /mangas           GET  /mangas/{id}
-POST   /mangas           PATCH /mangas/{mangaId}
-DELETE /transgroups/{groupId}/mangas/{mangaId}
-DELETE /mangas/{mangaId}/transgroups/{groupId}
-GET    /mangas/{mangaId}/management
-GET    /transgroups/{groupId}/mangas
-GET    /admin/mangas
-
-GET    /mangas/{mangaId}/chapters
-POST   /mangas/{mangaId}/chapters
-DELETE /mangas/{mangaId}/chapters/{chapterId}
-GET    /chapters/{chapterId}/pages
-
-GET    /transgroups      GET  /transgroups/{id}
-PATCH  /transgroups/{id} DELETE /transgroups/{id}
-GET    /admin/transgroups
-DELETE /transgroups/{groupId}/users/{userId}
-
-POST   /transgroups/{groupId}/join-requests
-GET    /transgroups/{groupId}/join-requests
-PATCH  /transgroups/{groupId}/join-requests/{requestId}/approve
-PATCH  /transgroups/{groupId}/join-requests/{requestId}/reject
-GET    /users/me/join-requests
-
-POST   /creation-requests
-GET    /users/me/creation-requests
-GET    /admin/creation-requests
-PATCH  /admin/creation-requests/{requestId}/approve
-PATCH  /admin/creation-requests/{requestId}/reject
-
-POST   /admin/roles      GET /admin/roles      DELETE /admin/roles/{id}
-POST   /admin/permissions GET /admin/permissions DELETE /admin/permissions/{id}
-
-POST   /files/upload     POST /files/upload-multi   (multipart/form-data)
-```
-
-For a full request/response contract intended for frontend generation, see
-[`FRONTEND_API_SPEC.md`](FRONTEND_API_SPEC.md).
-
-## Domain model
-
-All entities extend `BaseEntity` (audited `createdAt`/`updatedAt`). IDs are UUID
-strings except `Category`, which uses an auto-increment `Long`.
-
-- `User` — unique username/email, password, profile fields, avatar URL, optional
-  membership in one `TransGroup`, and many-to-many roles.
-- `Role` / `Permission` — string-named; joined through `user_roles` and
-  `role_permissions`.
-- `TransGroup` — leader, member users, status (`APPROVED`/`DELETED`), slug generated,
-  optional `coverImageUrl`, and many-to-many translated manga. The leader is not counted as a
-  member.
-- `Manga` — name, generated slug, author, optional `coverImageUrl`, status, description,
-  many-to-many categories and translation groups, and one-to-many chapters
-  (`@OrderBy chapterIndex ASC`,
-  cascade + orphan removal).
-- `Chapter` — unique `(manga_id, chapter_index)`, buffered `views`, one-to-many pages
-  ordered by `pageNumber` (cascade + orphan removal).
-- `Category` — name, description.
-- `GroupCreationRequest` — user request reviewed by an admin, optionally linked to the
-  created group.
-- `GroupJoinRequest` — pending/approved/rejected membership request.
-
-Enums are stored as strings and parsed case-insensitively:
-`MangaStatus` = `COMPLETED` | `ONGOING` | `ONHOLD`;
-`TransGroupStatus` = `APPROVED` | `DELETED`;
-`GroupJoinRequestStatus` = `PENDING` | `APPROVED` | `REJECTED`;
-`GroupCreationRequestStatus` = `PENDING` | `APPROVED` | `REJECTD` (note the existing
-spelling).
-
-Hibernate runs with `ddl-auto: update`, which is a development convenience, not a
-production migration strategy.
-
-## Security
-
-- `SecutityConfig` (file/class name kept as-is) disables CSRF, enables CORS, uses
-  `STATELESS` sessions, and installs `JwtAuthenticationFilter` before
-  `UsernamePasswordAuthenticationFilter`.
-- `JwtUtils` signs HS512 tokens with `jwt.signer-key`, stores username as subject, a
-  UUID as JWT ID, and roles as a space-separated `scope` claim.
-- `JwtAuthenticationFilter` verifies signature/expiry and Redis invalidation state,
-  then loads authorities via `CustomUserDetailsService` (`ROLE_<name>` plus
-  unprefixed permission authorities).
-- `@RateLimit` with `RateLimitAspect` implements a fixed-window Redis counter keyed by
-  client IP or authenticated user ID (falling back to IP). The aspect logs and
-  proceeds if Redis evaluation fails (fails open).
-- CORS allows `http://localhost:5173` and `http://127.0.0.1:5173` with credentials;
-  override with `app.cors.allowed-origins`.
-
-## Storage and background jobs
-
-- Uploads are validated, optimized to WebP, and stored in R2. Temporary uploads use the
-  `tmp/` prefix and are returned as public URLs; chapters copy those objects to
-  `mangas/{mangaId}/{chapterId}/` and roll back the copies if the transaction fails.
-- `ViewFlushScheduler.flushViews` (`*/30 * * * * *`, every 30 seconds) moves buffered
-  chapter views from Redis to MySQL in batches of 500.
-- `StorageCleanupScheduler.cleanupTmpFiles` (`0 0 * * * *`, hourly) deletes R2 `tmp/`
-  objects older than three hours.
-- `StorageCleanupScheduler.cleanupFailedUploadedFiles` (`0 0 3 * * *`, daily at 03:00)
-  is scheduled but currently a placeholder.
-- `InitApplicationConfig` seeds permissions, roles (`ADMIN`, `USER`, `TRANSLATOR`),
-  five default categories, four users (`admin`, `trg25`, `khoa12`, `linh25`), and an
-  initial admin translation group. Seeds are created only when the relevant table is
-  empty.
-
-## Development conventions
-
-- Keep business rules and authorization in services; controllers only translate HTTP.
-- Use request/response DTOs; never expose JPA entities from controllers.
-- Return `ApiResponse<T>` and use `AppException` + `ResponseCode` for expected errors.
-- Cover images are uploaded through `POST /files/upload` or
-  `POST /files/upload-multi`; send the returned public URL as `coverImageUrl` in manga,
-  group-creation, or group-update JSON. Cover fields are optional and are not stored as
-  binary data in MySQL.
-- Use MapStruct mappers for entity/DTO conversion.
-- Prefer lazy associations, `Set` for many-to-many, and explicit `@EntityGraph` or
-  purpose-built queries when related data is needed.
-- Use constructor injection and `@FieldDefaults` consistently with existing code.
-- Never log credentials, tokens, passwords, or signing keys.
-- Do not edit generated MapStruct sources under `target/`.
-
-For deeper contributor guidance, see [`AGENTS.md`](AGENTS.md).
-
-## Known limitations and inconsistencies
-
-- The README no longer describes a `manga.genres` field; the model uses the
-  `manga_categories` many-to-many relation to `Category`.
-- Both JJWT and Nimbus JWT dependencies are declared, but `JwtUtils` uses Nimbus; the
-  JJWT declarations are unused by the current source.
-- `SecutityConfig` retains its misspelled class/file name.
-- `MangaResponse.transGroupsId` is a list of `TransGroupSummaryResponse`, not IDs,
-  despite its name. `MangaDetailsResponse` does not include chapters; fetch them from
-  `/mangas/{mangaId}/chapters`.
-- `MangaManagementResponse` is a separate authenticated response for editing a manga;
-  its `transGroups[].canRemove` flag controls whether the current leader may remove
-  that group from the manga.
-- The scheduled failed-upload cleanup method is a placeholder.
-- Rate-limit evaluation fails open if Redis evaluation throws.
-- The existing smoke test depends on a fully provisioned external environment.
+- [`FRONTEND_API_SPEC.md`](FRONTEND_API_SPEC.md): Đặc tả chi tiết toàn bộ REST API, DTO TypeScript và luồng xác thực dành cho Frontend.
+- [`AGENTS.md`](AGENTS.md): Quy chuẩn kiến trúc, quy tắc DTO/Projection và hướng dẫn dành cho lập trình viên / AI coding agent.
+- [`PRODUCTION_READINESS_GUIDE.md`](PRODUCTION_READINESS_GUIDE.md): Phân tích chi tiết các điểm cần sửa trong code hiện tại, các tính năng cần bổ sung cho giai đoạn MVP Production, và hướng dẫn triển khai từng bước dễ bảo trì, mở rộng.

@@ -1,6 +1,7 @@
 package com.example.mymangaapp.mymangaapp.dto.manga.response;
 
 import lombok.*;
+import com.example.mymangaapp.mymangaapp.enums.MangaStatus;
 import lombok.experimental.FieldDefaults;
 
 import java.time.Instant;
@@ -17,7 +18,7 @@ public class MangaSummaryResponse {
     String slug;
     String coverImageUrl;
     String authorsName;
-    String status;
+    MangaStatus status;
     String description;
     Instant createdAt;
 
