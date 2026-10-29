@@ -62,12 +62,12 @@ public class CloudStorageConfig {
         // ghi đề cấu hình cho tất cả các requests gọi từ client này
         ClientOverrideConfiguration config = ClientOverrideConfiguration.builder()
                 // tổng tg tối đa gọi api
-                .apiCallTimeout(Duration.ofSeconds(10))
+                .apiCallTimeout(Duration.ofSeconds(20))
                 // thời gian cho mỗi lần thử gọi api (5s kể từ khi gọi api mà có lỗi, vứt exception luôn)
-                .apiCallAttemptTimeout(Duration.ofSeconds(5))
+                .apiCallAttemptTimeout(Duration.ofSeconds(10))
                 // giảm số lần thử gọi api xuống còn 1
                 .retryStrategy(StandardRetryStrategy.builder()
-                        .maxAttempts(1)
+                        .maxAttempts(2)
                         .build())
                 .build();
 

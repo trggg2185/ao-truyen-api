@@ -31,7 +31,7 @@ public class InitApplicationConfig {
             SequenceCounterRepository sequenceCounterRepository
     ) {
         return args -> {
-            log.info("................Init application starts...............");
+            log.info(".....................Init application starts....................");
 
             Permission createPost = permissionRepository
                     .findById("CREATE_POST")
@@ -54,24 +54,19 @@ public class InitApplicationConfig {
                             .description("update manga permission")
                             .build()));
 
-            // Role admin có full quyền
-            Role adminRole = roleRepository
-                    .findById("ADMIN")
-                    .orElseGet(() -> roleRepository.save(Role.builder()
-                            .name("ADMIN")
-                            .description("Role admin")
-                            .permissions(Set.of(createPost, createManga, updateManga))
-                            .build()));
+            if (roleRepository.count() == 0) {
+                roleRepository.save(Role.builder()
+                        .name("ADMIN")
+                        .description("Role admin")
+                        .permissions(Set.of(createPost, createManga, updateManga))
+                        .build());
 
-            Role userRole = roleRepository
-                    .findById("USER")
-                    .orElseGet(() -> roleRepository.save(Role.builder()
-                            .name("USER")
-                            .description("Role user")
-                            .permissions(Set.of(createPost))
-                            .build()));
+                roleRepository.save(Role.builder()
+                        .name("USER")
+                        .description("Role user")
+                        .permissions(Set.of(createPost))
+                        .build());
 
-            if (!roleRepository.existsById("TRANSLATOR")) {
                 roleRepository.save(Role.builder()
                         .name("TRANSLATOR")
                         .description("Role translator")
@@ -85,7 +80,32 @@ public class InitApplicationConfig {
                         Category.builder().name("Fantasy").description("Huyễn tưởng").build(),
                         Category.builder().name("Romance").description("Lãng mạn").build(),
                         Category.builder().name("Comedy").description("Hài hước").build(),
-                        Category.builder().name("Drama").description("Drama đau tim").build()
+                        Category.builder().name("Drama").description("Đau tim").build(),
+                        Category.builder().name("Adult").description("Nội dung người lớn").build(),
+                        Category.builder().name("Adventure").description("Phiêu lưu").build(),
+                        Category.builder().name("Ecchi").description("Ecchi").build(),
+                        Category.builder().name("Harem").description("Hậu cung").build(),
+                        Category.builder().name("Historical").description("Lịch sử").build(),
+                        Category.builder().name("Horror").description("Kinh dị").build(),
+                        Category.builder().name("Isekai").description("Chuyển sinh").build(),
+                        Category.builder().name("Mecha").description("Mecha").build(),
+                        Category.builder().name("Mystery").description("Huyền bí").build(),
+                        Category.builder().name("Oneshot").description("1 bắn").build(),
+                        Category.builder().name("Psychological").description("Tâm lý").build(),
+                        Category.builder().name("School Life").description("Cuộc sống học đường").build(),
+                        Category.builder().name("Slice Of Life").description("Đời thường").build(),
+                        Category.builder().name("Sci-Fi").description("Khoa học viễn tưởng").build(),
+                        Category.builder().name("Seinen").description("Dành cho trung niên").build(),
+                        Category.builder().name("Shoujo").description("Dành cho thiếu nữ").build(),
+                        Category.builder().name("Shounen").description("Dành cho thiếu niên").build(),
+                        Category.builder().name("Sport").description("Thể thao").build(),
+                        Category.builder().name("Supernatural").description("Siêu năng lực").build(),
+                        Category.builder().name("Yaoi").description("Tình cảm giữa các nhân vật nam").build(),
+                        Category.builder().name("Yuri").description("Tình cảm giữa các nhân vật nữ").build(),
+                        Category.builder().name("Thriller").description("Kịch tính").build(),
+                        Category.builder().name("Tragedy").description("Bi kịch").build(),
+                        Category.builder().name("Full Color").description("Truyện màu").build(),
+                        Category.builder().name("Doujinshi").description("Truyện do cá nhân hoặc tác giả không chuyên sang tác").build()
                 );
                 categoryRepository.saveAll(categories);
                 log.info("Tạo các thể loại truyện mặc định thành công!");
@@ -99,7 +119,7 @@ public class InitApplicationConfig {
                 sequenceCounterRepository.saveAll(scs);
             }
 
-            log.info(".................Init application ends...................");
+            log.info(".........................Init application ends.......................");
         };
     }
 

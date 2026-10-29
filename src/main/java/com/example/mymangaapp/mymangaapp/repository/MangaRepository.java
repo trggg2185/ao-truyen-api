@@ -56,17 +56,41 @@ public interface MangaRepository extends JpaRepository<Manga, String> {
     @Query("""
             SELECT new com.example.mymangaapp.mymangaapp.dto.manga.response.MangaResponse(
                 m.id, m.name, m.slug, m.coverImageUrl, m.authorsName,
-                m.status, m.description, m.createdAt, m.updatedAt
+                m.status, m.description, m.createdAt, m.totalViews, m.latestChapterIndex
             )
             FROM Manga m
     """)
     Page<MangaResponse> findPublicPage(Pageable pageable);
 
+    @Query("""
+            SELECT  new com.example.mymangaapp.mymangaapp.dto.manga.response.MangaResponse(
+                m.id, m.name, m.slug, m.coverImageUrl, m.authorsName,
+                m.status, m.description, m.createdAt, m.totalViews, m.latestChapterIndex
+            )
+            FROM Manga m
+            WHERE m.latestChapterAt IS NOT NULL
+            ORDER BY m.latestChapterAt DESC
+    """)
+    // Lấy danh sách 20 truyện mới cập nhật các chap mới, sắp xếp giảm dần tg latest chap của mỗi truyện
+    List<MangaResponse> findRecentlyUpdatedMangas(Pageable pageable);
+
+    @Query("""
+            SELECT  new com.example.mymangaapp.mymangaapp.dto.manga.response.MangaResponse(
+                m.id, m.name, m.slug, m.coverImageUrl, m.authorsName,
+                m.status, m.description, m.createdAt, m.totalViews, m.latestChapterIndex
+            )
+            FROM Manga m
+            WHERE EXISTS (SELECT 1 FROM Chapter c WHERE c.manga.id = m.id)
+            ORDER BY m.createdAt DESC
+    """)
+    // Lấy ds 10 truyện mới được tạo và phải có chương rồi mới tính, ko có chương nào ko tính
+    List<MangaResponse> findNewlyMangas(Pageable pageable);
+
     // DTO-based Projection cho chi tiết 1 bộ truyện theo ID (GET /mangas/{idOrSlug})
     @Query("""
             SELECT new com.example.mymangaapp.mymangaapp.dto.manga.response.MangaResponse(
                 m.id, m.name, m.slug, m.coverImageUrl, m.authorsName,
-                m.status, m.description, m.createdAt, m.updatedAt
+                m.status, m.description, m.createdAt, m.totalViews, m.latestChapterIndex
             )
             FROM Manga m
             WHERE m.id = :id
@@ -77,7 +101,7 @@ public interface MangaRepository extends JpaRepository<Manga, String> {
     @Query("""
             SELECT new com.example.mymangaapp.mymangaapp.dto.manga.response.MangaResponse(
                 m.id, m.name, m.slug, m.coverImageUrl, m.authorsName,
-                m.status, m.description, m.createdAt, m.updatedAt
+                m.status, m.description, m.createdAt, m.totalViews, m.latestChapterIndex
             )
             FROM Manga m
             WHERE m.slug = :slug

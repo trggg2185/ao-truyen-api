@@ -17,6 +17,8 @@ import lombok.experimental.FieldDefaults;
 import org.springframework.lang.NonNull;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
@@ -109,10 +111,27 @@ public class MangaController {
             @RequestParam(defaultValue = "24") int size, // số bản ghi mỗi trang
             @RequestParam(defaultValue = "createdAt") String sortBy // sxep theo field nào
     ) {
-        PaginatedResponse<MangaResponse> responses = mangaService.getMangas(page, size, sortBy);
 
         return ApiResponse.<PaginatedResponse<MangaResponse>>builder()
-                .result(responses)
+                .result(mangaService.getMangas(page, size, sortBy))
+                .build();
+    }
+
+    @GetMapping("/mangas/recently-updated")
+    @RateLimit(capacity = 60)
+    public ApiResponse<List<MangaResponse>> getTop20RecentlyUpdatedMangas() {
+
+        return ApiResponse.<List<MangaResponse>>builder()
+                .result(mangaService.getTop20RecentlyUpdatedMangas())
+                .build();
+    }
+
+    @GetMapping("/mangas/newly")
+    @RateLimit(capacity = 60)
+    public ApiResponse<List<MangaResponse>> getTop10NewlyMangas() {
+
+        return ApiResponse.<List<MangaResponse>>builder()
+                .result(mangaService.getTop10NewlyMangas())
                 .build();
     }
 

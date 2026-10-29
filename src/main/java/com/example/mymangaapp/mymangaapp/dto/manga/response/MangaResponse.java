@@ -32,7 +32,10 @@ public class MangaResponse {
     Set<CategoryResponse> categories;
     List<TransGroupSummaryResponse> transGroups;
     Instant createdAt;
-    Instant updatedAt;
+    // bỏ trường updatedAt
+    Long totalViews; // thêm trường totalViews (sum of views of chapters)
+    Integer latestChapterIndex; // thêm trường chapter index của chap mới cập nhật
+
 
     /*
      * Constructor dành riêng cho DTO-based Projection trong MangaRepository
@@ -57,7 +60,8 @@ public class MangaResponse {
             MangaStatus status,
             String description,
             Instant createdAt,
-            Instant updatedAt
+            Long totalViews,
+            Integer latestChapterIndex
     ) {
         this.id = id;
         this.name = name;
@@ -67,7 +71,8 @@ public class MangaResponse {
         this.status = status;
         this.description = description;
         this.createdAt = createdAt;
-        this.updatedAt = updatedAt;
+        this.totalViews = totalViews;
+        this.latestChapterIndex = latestChapterIndex;
     }
 
 }

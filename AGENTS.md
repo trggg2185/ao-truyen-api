@@ -108,7 +108,7 @@ columns. Auditing is enabled on the application class with `@EnableJpaAuditing`.
   - UUID string identifier, leader (`User`), member users, `name`, unique `slug`, `avatar`, `coverImageUrl`, `description`, `status` (`APPROVED`, `DELETED`), and translated manga.
   - `@PrePersist`/`@PreUpdate` generates the slug from the name.
 - `Manga`
-  - UUID string identifier, `name`, unique `slug` (`name-sequenceNumber`), `sequenceNumber`, `authorsName`, `coverImageUrl`, `description`, `status` (`ONGOING`, `COMPLETED`, `ONHOLD`).
+  - UUID string identifier, `name`, unique `slug` (`name-sequenceNumber`), `sequenceNumber`, `authorsName`, `coverImageUrl`, `description`, `status` (`ONGOING`, `COMPLETED`, `ONHOLD`), `latestChapterAt` (`Instant`), `latestChapterIndex` (`Integer`), and buffered `totalViews` (`Long`, sum of chapter views).
   - Many-to-many categories and translation groups.
   - One-to-many chapters with cascade/orphan removal and ascending `chapterIndex`.
 - `SequenceCounter`
@@ -193,7 +193,7 @@ dto/
     response/     PermissionResponse, DeletePermissionResponse
 ```
 
-- `MangaResponse` is used for public manga list (`GET /mangas`), manga details (`GET /mangas/{idOrSlug}`), manga creation (`POST /mangas`), and manga updates (`PATCH /mangas/{mangaId}`).
+- `MangaResponse` is used for public manga list (`GET /mangas`), home lists (`GET /mangas/recently-updated` and `GET /mangas/newly`), manga details (`GET /mangas/{idOrSlug}`), manga creation (`POST /mangas`), and manga updates (`PATCH /mangas/{mangaId}`). It exposes `totalViews` and `latestChapterIndex` instead of `updatedAt`.
 - `TransGroupResponse` is used for group detail (`GET /transgroups/{idOrSlug}`), group creation approval, and group updates (`PATCH /transgroups/{id}`). A group's translated mangas are fetched via the dedicated paginated endpoint `GET /transgroups/{groupId}/mangas` (`PaginatedResponse<MangaSummaryResponse>`), not embedded unpaginated inside the group detail response.
 
 ### Repository Query & Projection Strategy (DTO-based & Interface-based Projections)
@@ -211,7 +211,7 @@ instead of loading full JPA entities and mapping them with MapStruct:
      - `GroupJoinRequestRepository`: `findResponses(userId, groupId, status)` -> `List<JoinRequestResponse>` (using flat constructor to assemble nested `TransGroupSummaryResponse` and `UserSummaryResponse`)
      - `TransGroupRepository`: `findSummaries(status, pageable)`, `findMemberGroupSummary(userId, status)`, `findSummaryByLeaderIdAndStatus(leaderId, status)` -> `TransGroupSummaryResponse`
      - `UserRepository`: `findCurrentUserByUsername(username)` -> `CurrentUserResponse`, `findPublicProfileById/ByUsername` -> `PublicUserProfileResponse`, `findAllSummaries(pageable)` -> `Page<UserSummaryResponse>`
-     - `MangaRepository`: `findPublicPage(pageable)`, `findProjectedById(id)`, `findProjectedBySlug(slug)` -> `MangaResponse`; `findManagementById(id)` -> `MangaManagementResponse`; `findSummaries(status, pageable)`, `findSummariesByGroupId(groupId, pageable)` -> `Page<MangaSummaryResponse>`
+     - `MangaRepository`: `findPublicPage(pageable)`, `findRecentlyUpdatedMangas(pageable)`, `findNewlyMangas(pageable)`, `findProjectedById(id)`, `findProjectedBySlug(slug)` -> `MangaResponse`; `findManagementById(id)` -> `MangaManagementResponse`; `findSummaries(status, pageable)`, `findSummariesByGroupId(groupId, pageable)` -> `Page<MangaSummaryResponse>`
 2. **Interface-based Projection (`repository/projection/`)**:
    - Used for batch-loading child collections (`categories` and `transGroups`) across multiple `mangaIds` (`MangaCategoryProjection` and `MangaTransGroupProjection`).
    - Why? Using `@EntityGraph(attributePaths = {"categories", "transGroups"})` on `Page<Manga>` causes Hibernate `HHH90003004` (in-memory pagination of the entire table!) and a Cartesian product between `categories` and `transGroups`. Fetching the scalar page via DTO projection + 2 batch `WHERE m.id IN :mangaIds` queries via interface projections keeps SQL `LIMIT/OFFSET` in MySQL and runs in exactly 3 flat queries.
@@ -232,7 +232,7 @@ instead of loading full JPA entities and mapping them with MapStruct:
 
 ## Scheduled jobs and background behavior
 
-- `ViewFlushScheduler.flushViews`: every 5 minutes (`0 */5 * * * *`), claims buffered chapter view increments from Redis using atomic `RENAMENX`, updates MySQL in batches of 500 using `JdbcTemplate`, then deletes flushed keys from Redis.
+- `ViewFlushScheduler.flushViews`: every 5 minutes (`0 */5 * * * *`), claims buffered chapter view increments from Redis using atomic `RENAMENX`, updates `chapter.views` and aggregates/updates parent `manga.total_views` in the same transaction per batch of 500 using `JdbcTemplate`, then deletes flushed keys from Redis.
 - `StorageCleanupScheduler.cleanupTmpFiles`: every hour (`0 0 * * * *`), deletes R2 objects under `tmp/` older than 3 hours.
 - `StorageCleanup`: registers `TransactionSynchronization` hooks to delete promoted R2 files if a DB transaction rolls back, or delete chapter/manga/user R2 prefixes asynchronously after a DB delete transaction commits.
 

@@ -3,20 +3,26 @@ package com.example.mymangaapp.mymangaapp.entity;
 import java.util.Set;
 
 import com.example.mymangaapp.mymangaapp.enums.TransGroupStatus;
-import com.example.mymangaapp.mymangaapp.utils.SlugUtils;
 import jakarta.persistence.*;
 
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 import lombok.experimental.SuperBuilder;
 
-@Getter
-@Setter
+@Setter @Getter
 @NoArgsConstructor
 @AllArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
-@SuperBuilder
-@Entity
+@SuperBuilder @Entity
+@Table(
+        name = "trans_group",
+        uniqueConstraints = {
+                @UniqueConstraint(
+                        name = "uk_transgroup_name_sequence",
+                        columnNames = { "name", "sequence_number" }
+                )
+        }
+)
 public class TransGroup extends BaseEntity {
     
     @Id
@@ -50,12 +56,9 @@ public class TransGroup extends BaseEntity {
     @Column(length = 500)
     String coverImageUrl;
 
-    // chạy trc khi perist xuống db để tạo slug từ group name
-    @PrePersist
-    @PreUpdate
-    public void generateSlug() {
-        this.slug = SlugUtils.generateSlug(this.name);
-    }
+    // Sô thứ tự của truyện, được tạo sẵn lúc tạo truyện, kothể update
+    @Column(nullable = false, updatable = false)
+    Long sequenceNumber;
 
     @Column(length = 300)
     String description;

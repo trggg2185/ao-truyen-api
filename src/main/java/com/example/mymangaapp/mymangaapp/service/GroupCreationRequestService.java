@@ -17,12 +17,12 @@ import com.example.mymangaapp.mymangaapp.repository.GroupCreationRequestReposito
 import com.example.mymangaapp.mymangaapp.repository.TransGroupRepository;
 import com.example.mymangaapp.mymangaapp.repository.UserRepository;
 import com.example.mymangaapp.mymangaapp.security.utils.SecurityUtils;
+import com.example.mymangaapp.mymangaapp.utils.PaginationUtils;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.lang.NonNull;
@@ -72,7 +72,7 @@ public class GroupCreationRequestService {
             @NonNull String sortBy) {
 
         String currentUserId = SecurityUtils.getCurrentUserId();
-        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, sortBy));
+        Pageable pageable = PaginationUtils.createPageable(page, size, sortBy, Sort.Direction.DESC);
 
         // Dùng DTO-based Projection: truy vấn thẳng ra Page<CreationRequestResponse>, không nạp Entity User
         Page<CreationRequestResponse> dtoPage = groupCreationRequestRepository
@@ -145,7 +145,7 @@ public class GroupCreationRequestService {
             GroupCreationRequestStatus status, int page,
             int size, @NonNull String sortBy
     ) {
-        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, sortBy));
+        Pageable pageable = PaginationUtils.createPageable(page, size, sortBy, Sort.Direction.DESC);
 
         // Truyền creatorId = null để lấy yêu cầu của mọi user, có thể lọc theo status
         Page<CreationRequestResponse> dtoPage = groupCreationRequestRepository

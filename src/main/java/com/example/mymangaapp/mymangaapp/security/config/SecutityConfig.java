@@ -42,6 +42,8 @@ public class SecutityConfig {
             "/transgroups", // lấy tất cả các nhóm dịch đang hoạt động (APPROVED)
             "/transgroups/{id}", // lấy nhóm dịch theo id
             "/mangas", // lấy tất cả các manga
+            "/mangas/recently-updated", // lấy top 20 manga mới cập nhật chương
+            "/mangas/newly", // lấy top 10 manga mới tạo
             "/mangas/{id}", // lấy info manga theo id
             "/transgroups/{id}/mangas", // lấy các manga đang dịch của nhóm
             "/mangas/{id}/chapters", // lấy các chapter của 1 manga

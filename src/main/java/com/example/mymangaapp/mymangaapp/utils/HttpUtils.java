@@ -23,7 +23,7 @@ public final class HttpUtils {
         for (String header : headers) {
             String ip = request.getHeader(header);
 
-            if (ip != null && !ip.isBlank() && "unknown".equalsIgnoreCase(ip)) {
+            if (ip != null && !ip.isBlank() && !"unknown".equalsIgnoreCase(ip)) {
                 // trả về split vì X-Forward-For có thể chứa nhiều ip
                 return ip.split(",")[0].trim();
             }

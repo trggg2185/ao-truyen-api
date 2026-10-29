@@ -5,6 +5,7 @@ import com.example.mymangaapp.mymangaapp.dto.chapter.response.ChapterResponse;
 import com.example.mymangaapp.mymangaapp.dto.chapter.response.ChapterSummaryResponse;
 import com.example.mymangaapp.mymangaapp.dto.common.PaginatedResponse;
 import com.example.mymangaapp.mymangaapp.entity.Chapter;
+import com.example.mymangaapp.mymangaapp.entity.Manga;
 import com.example.mymangaapp.mymangaapp.entity.Page;
 import com.example.mymangaapp.mymangaapp.exception.AppException;
 import com.example.mymangaapp.mymangaapp.exception.ResponseCode;
@@ -14,13 +15,13 @@ import com.example.mymangaapp.mymangaapp.repository.MangaRepository;
 import com.example.mymangaapp.mymangaapp.service.storage.ImageProcessor;
 import com.example.mymangaapp.mymangaapp.service.storage.StorageCleanup;
 import com.example.mymangaapp.mymangaapp.service.storage.StorageService;
+import com.example.mymangaapp.mymangaapp.utils.PaginationUtils;
 import com.example.mymangaapp.mymangaapp.utils.StorageKeysUtils;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.lang.NonNull;
@@ -53,10 +54,9 @@ public class ChapterService {
     @Transactional
     public ChapterResponse createChapter(@NonNull String mangaId, @NonNull ChapterRequest request) {
 
-        // Tồn tại + quyền
-        if (!mangaRepository.existsById(mangaId)) {
-            throw new AppException(ResponseCode.MANGA_NOT_FOUND);
-        }
+        Manga manga = mangaRepository
+                .findById(mangaId)
+                .orElseThrow(() -> new AppException(ResponseCode.MANGA_NOT_FOUND));
 
         // Kiểm tra nhanh để báo lỗi sớm (không bắt buộc, chỉ để đỡ tốn một lần insert)
         if (chapterRepository.existsByMangaIdAndChapterIndex(mangaId, request.getChapterIndex())) {
@@ -65,7 +65,7 @@ public class ChapterService {
 
         // Insert chapter NGAY để DB chặn trùng index trước khi tốn công copy ảnh
         Chapter chapter = chapterMapper.toChapter(request);
-        chapter.setManga(mangaRepository.getReferenceById(mangaId));
+        chapter.setManga(manga);
         chapter = insertChapter(chapter);
 
         // Tính toán destKeys cho các trang truyện
@@ -82,6 +82,11 @@ public class ChapterService {
         List<Page> pages = pageService.createPages(chapter, pageUrls);
         chapter.getPages().addAll(pages);
 
+        // Set cho manga này có chương mới
+        // Dù cho sau này chương này có cập nhật các ảnh thì cũng ko đc nằm bảng mới cập nhật
+        manga.setLatestChapterAt(chapter.getCreatedAt());
+        manga.setLatestChapterIndex(chapter.getChapterIndex());
+
         log.info("Đã tạo chapter {} (index {}) với {} trang cho manga {}",
                 chapter.getId(), chapter.getChapterIndex(), pages.size(), mangaId);
 
@@ -97,9 +102,15 @@ public class ChapterService {
                 .orElseThrow(() -> new AppException(ResponseCode.CHAPTER_NOT_FOUND));
 
         // Check chapter có thuộc về manga này ko
-        if (!chapter.getManga().getId().equals(mangaId)) {
+        Manga manga = chapter.getManga();
+        if (!manga.getId().equals(mangaId)) {
             throw new AppException(ResponseCode.UNAUTHORIZED);
         }
+
+        // Trừ số lượt xem của chương bị xoá khỏi tổng lượt xem (totalViews) của truyện (không để âm)
+        long chapterViews = chapter.getViews() != null ? chapter.getViews() : 0L;
+        long currentTotalViews = manga.getTotalViews() != null ? manga.getTotalViews() : 0L;
+        manga.setTotalViews(Math.max(0L, currentTotalViews - chapterViews));
 
         // xoá chapter có cascade và orphanremoval nên page thuộc
         // về chapter cũng sẽ tự động xoá
@@ -124,7 +135,7 @@ public class ChapterService {
             throw new AppException(ResponseCode.MANGA_NOT_FOUND);
         }
 
-        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, sortBy));
+        Pageable pageable = PaginationUtils.createPageable(page, size, sortBy, Sort.Direction.DESC);
 
         org.springframework.data.domain.Page<ChapterSummaryResponse> dtoPage = chapterRepository
                 .findSummariesByMangaId(mangaId, pageable);

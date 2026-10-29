@@ -1,6 +1,7 @@
 package com.example.mymangaapp.mymangaapp.service;
 
 import com.example.mymangaapp.mymangaapp.constant.RoleConstants;
+import com.example.mymangaapp.mymangaapp.constant.SequenceCounterConstants;
 import com.example.mymangaapp.mymangaapp.dto.common.PaginatedResponse;
 import com.example.mymangaapp.mymangaapp.dto.transgroup.request.TransGroupUpdateRequest;
 import com.example.mymangaapp.mymangaapp.dto.transgroup.response.TransGroupOfUserResponse;
@@ -18,6 +19,8 @@ import com.example.mymangaapp.mymangaapp.repository.*;
 import com.example.mymangaapp.mymangaapp.security.utils.SecurityUtils;
 import com.example.mymangaapp.mymangaapp.service.storage.ObjectStorage;
 import com.example.mymangaapp.mymangaapp.service.storage.StorageService;
+import com.example.mymangaapp.mymangaapp.utils.PaginationUtils;
+import com.example.mymangaapp.mymangaapp.utils.SlugUtils;
 import com.example.mymangaapp.mymangaapp.utils.StorageKeysUtils;
 import com.example.mymangaapp.mymangaapp.utils.UUIDUtils;
 import lombok.AccessLevel;
@@ -25,7 +28,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.lang.NonNull;
@@ -37,10 +39,9 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
-@Service
+@Service @Slf4j
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
-@Slf4j
 @Transactional(readOnly = true)
 public class TransGroupService {
 
@@ -55,6 +56,7 @@ public class TransGroupService {
 
     ObjectStorage objectStorage;
     StorageService storageService;
+    SequenceCounterService sequenceCounterService;
 
     @Transactional
     public TransGroup createTransGroup(GroupCreationRequest groupCreationRequest) {
@@ -73,6 +75,8 @@ public class TransGroupService {
                 .name(groupCreationRequest.getGroupName())
                 .description(groupCreationRequest.getDescription())
                 .leader(creator)
+                .slug(SlugUtils.generateSlug(groupCreationRequest.getGroupName()))
+                .sequenceNumber(sequenceCounterService.next(SequenceCounterConstants.TRANSGROUP))
                 .build();
 
         return transGroupRepository.save(transGroup);
@@ -125,7 +129,9 @@ public class TransGroupService {
             int page, int size,
             @NonNull String sortBy
     ) {
-        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, sortBy));
+
+        // sort giảm dần
+        Pageable pageable = PaginationUtils.createPageable(page, size, sortBy, Sort.Direction.DESC);
 
         Page<TransGroupSummaryResponse> dtoPage = transGroupRepository
                 .findSummaries(TransGroupStatus.APPROVED, pageable);
@@ -159,7 +165,7 @@ public class TransGroupService {
             TransGroupStatus status, int page,
             int size, @NonNull String sortBy
     ) {
-        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, sortBy));
+        Pageable pageable = PaginationUtils.createPageable(page, size, sortBy, Sort.Direction.DESC);
 
         Page<TransGroupSummaryResponse> dtoPage = transGroupRepository
                 .findSummaries(status, pageable);

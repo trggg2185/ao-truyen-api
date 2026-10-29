@@ -101,7 +101,7 @@ type RoleName = 'ADMIN' | 'USER' | 'TRANSLATOR';
 ## 6. DTO catalog (TypeScript)
 
 > **Note on optimized/unified DTOs:**
-> - `MangaDetailsResponse` has been removed and merged into `MangaResponse` (which now includes `authorsName`, `createdAt`, and `updatedAt`).
+> - `MangaDetailsResponse` has been removed and merged into `MangaResponse` (which includes `authorsName`, `createdAt`, `totalViews`, and `latestChapterIndex`; `updatedAt` has been removed).
 > - `TransGroupDetailsResponse` has been removed and replaced by `TransGroupResponse` (which includes `avatar`, `coverImageUrl`, `leader`, `members`, `status`, `description`, `createdAt`). Group manga lists are fetched via the paginated endpoint `GET /transgroups/{groupId}/mangas`.
 > - `DeleteUserResponse` has been removed (`DELETE /users/me` returns `ApiResponse<void>`).
 > - All `status` fields in response DTOs use strongly-typed domain enums serialized as uppercase strings.
@@ -213,7 +213,8 @@ interface MangaUpdateRequest {
   description?: string;
 }
 
-// Unified response for GET /mangas, GET /mangas/{idOrSlug}, POST /mangas, PATCH /mangas/{mangaId}
+// Unified response for GET /mangas, GET /mangas/recently-updated, GET /mangas/newly,
+// GET /mangas/{idOrSlug}, POST /mangas, PATCH /mangas/{mangaId}
 interface MangaResponse {
   id: string;
   name: string;
@@ -225,7 +226,8 @@ interface MangaResponse {
   categories: CategoryResponse[];
   transGroups: TransGroupSummaryResponse[];
   createdAt: string;
-  updatedAt: string;
+  totalViews: number;
+  latestChapterIndex: number | null;
 }
 
 interface MangaSummaryResponse {
@@ -401,6 +403,8 @@ interface DeletePermissionResponse { permissionId: string; }
 
 ### 7.4 Manga (`/mangas`, `/admin/mangas`, `/transgroups/{groupId}/mangas`)
 - `GET /mangas?page=0&size=24&sortBy=createdAt` (public) → `ApiResponse<PaginatedResponse<MangaResponse>>`
+- `GET /mangas/recently-updated` (public, top 20 ordered by `latestChapterAt DESC`) → `ApiResponse<MangaResponse[]>`
+- `GET /mangas/newly` (public, top 10 newly created manga that have at least 1 chapter) → `ApiResponse<MangaResponse[]>`
 - `GET /mangas/{idOrSlug}` (public) → `ApiResponse<MangaResponse>`
 - `GET /transgroups/{groupId}/mangas?page=0&size=15&sortBy=createdAt` (public) → `ApiResponse<PaginatedResponse<MangaSummaryResponse>>`
 - `GET /mangas/{mangaId}/management` (leader) → `ApiResponse<MangaManagementResponse>`

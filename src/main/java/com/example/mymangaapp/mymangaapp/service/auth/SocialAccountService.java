@@ -22,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.HashSet;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -73,11 +74,17 @@ public class SocialAccountService {
         Role role = roleRepository.findById(roleName)
                 .orElseThrow(() -> new AppException(ResponseCode.ROLE_NOT_FOUND));
 
-        String username = UsernameGenerator.fromEmail(email);
+        String baseUsername = UsernameGenerator.fromEmail(email);
+        StringBuilder username = new StringBuilder(baseUsername);
+        // check xem có user nào trùng tên ko, nếu có cộng thêm 4 ký tự từ random uuid
+        while (userRepository.existsByUsername(username.toString())) {
+            username.append("_").append(UUID.randomUUID().toString(), 0, 4);
+        }
+
         User user = User.builder()
-                .username(username)
+                .username(username.toString())
                 .email(email)
-                .displayName(username) // đăng nhập bằng google thì set display name là username luôn (user có thể sửa)
+                .displayName(username.toString()) // đăng nhập bằng google thì set display name là username luôn (user có thể sửa)
                 .avatar(externalIdentity.getAvatarUrl()) // lấy đg link avatar của google, ko tốn băng thông của mình
                 .roles(new HashSet<>(Set.of(role)))
                 .build();

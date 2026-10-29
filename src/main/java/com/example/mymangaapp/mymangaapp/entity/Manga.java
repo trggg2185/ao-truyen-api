@@ -1,5 +1,6 @@
 package com.example.mymangaapp.mymangaapp.entity;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Set;
 
@@ -44,6 +45,16 @@ public class Manga extends BaseEntity {
     @Column(nullable = false, updatable = false)
     Long sequenceNumber;
 
+    // Đây là thời gian mà truyện có chap mới
+    Instant latestChapterAt;
+
+    // index của chương mới;
+    Integer latestChapterIndex;
+
+    // tổng views của truyện = tổng views của các chap
+    @Builder.Default
+    Long totalViews = 0L;
+
     // ko nên generate slug bằng prepersist và preupdate
     // ta sẽ xử lý trong service
 
@@ -59,12 +70,12 @@ public class Manga extends BaseEntity {
     // Lưu enum dưới dạng chuỗi (varchar) thay vì số 0, 1, 2
     @Enumerated(EnumType.STRING)
     // Set value mặc định vì dùng JPA tạo, cập nhật bảng
-    @Column(name = "status", nullable = false, columnDefinition = "VARCHAR(15) DEFAULT 'ONGOING'")
+    @Column(nullable = false, columnDefinition = "VARCHAR(15) DEFAULT 'ONGOING'")
     // Để Lombok ko bỏ qua giá trị khởi tạo = MangaStatus.ONGOING khi dựng object bằng Builder
     @Builder.Default
     MangaStatus status = MangaStatus.ONGOING;
 
-    @Column(name = "description", length = 500)
+    @Column(length = 500)
     String description;
 
     // QH: 1 manga có thể có nhiều trans group dịch

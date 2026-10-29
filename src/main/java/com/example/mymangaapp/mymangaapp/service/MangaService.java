@@ -27,6 +27,7 @@ import com.example.mymangaapp.mymangaapp.security.utils.SecurityUtils;
 import com.example.mymangaapp.mymangaapp.service.storage.ObjectStorage;
 import com.example.mymangaapp.mymangaapp.service.storage.StorageCleanup;
 import com.example.mymangaapp.mymangaapp.service.storage.StorageService;
+import com.example.mymangaapp.mymangaapp.utils.PaginationUtils;
 import com.example.mymangaapp.mymangaapp.utils.SlugUtils;
 import com.example.mymangaapp.mymangaapp.utils.StorageKeysUtils;
 import com.example.mymangaapp.mymangaapp.utils.UUIDUtils;
@@ -47,8 +48,7 @@ import java.time.Instant;
 import java.util.*;
 import java.util.stream.Collectors;
 
-@Slf4j
-@Service
+@Service @Slf4j
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 @Transactional(readOnly = true)
@@ -230,7 +230,7 @@ public class MangaService {
             MangaStatus status, int page,
             int size, String sortBy
     ) {
-        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, sortBy));
+        Pageable pageable = PaginationUtils.createPageable(page, size, sortBy, Sort.Direction.DESC);
         Page<MangaSummaryResponse> dtoPage = mangaRepository.findSummaries(status, pageable);
         return PaginatedResponse.of(dtoPage);
     }
@@ -244,12 +244,35 @@ public class MangaService {
      *    của 24 bộ truyện đó chỉ bằng 2 câu query `WHERE m.id IN (...)`.
      */
     public PaginatedResponse<MangaResponse> getMangas(int page, int size, String sortBy) {
-        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, sortBy));
+        Pageable pageable = PaginationUtils.createPageable(page, size, sortBy, Sort.Direction.DESC);
 
         Page<MangaResponse> dtoPage = mangaRepository.findPublicPage(pageable);
         populateRelations(dtoPage.getContent());
 
         return PaginatedResponse.of(dtoPage);
+    }
+
+    // trang home sẽ gọi endpoint này
+    // Lấy ds 20 truyện tranh mới cập nhật các chap mới
+    public List<MangaResponse> getTop20RecentlyUpdatedMangas() {
+
+        List<MangaResponse> responses = mangaRepository
+                .findRecentlyUpdatedMangas(PageRequest.of(0, 20));
+
+        // Nạp các thể loại truyện và các nhóm dịch
+        populateRelations(responses);
+
+        return responses;
+    }
+
+    public List<MangaResponse> getTop10NewlyMangas() {
+        List<MangaResponse> responses = mangaRepository
+                .findNewlyMangas(PageRequest.of(0, 10));
+
+        // Nạp các thể loại truyện và các nhóm dịch
+        populateRelations(responses);
+
+        return responses;
     }
 
     // Lấy danh sách các bộ truyện mà nhóm đang tham gia dịch bằng DTO-based Projection
@@ -261,7 +284,7 @@ public class MangaService {
             throw new AppException(ResponseCode.TRANSGROUP_NOT_FOUND);
         }
 
-        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, sortBy));
+        Pageable pageable = PaginationUtils.createPageable(page, size, sortBy, Sort.Direction.DESC);
 
         Page<MangaSummaryResponse> dtoPage = mangaRepository
                 .findSummariesByGroupId(groupId, pageable);

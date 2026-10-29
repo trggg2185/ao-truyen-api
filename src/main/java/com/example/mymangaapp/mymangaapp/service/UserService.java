@@ -20,6 +20,7 @@ import com.example.mymangaapp.mymangaapp.security.utils.SecurityUtils;
 import com.example.mymangaapp.mymangaapp.service.storage.ObjectStorage;
 import com.example.mymangaapp.mymangaapp.service.storage.StorageCleanup;
 import com.example.mymangaapp.mymangaapp.service.storage.StorageService;
+import com.example.mymangaapp.mymangaapp.utils.PaginationUtils;
 import com.example.mymangaapp.mymangaapp.utils.StorageKeysUtils;
 import com.example.mymangaapp.mymangaapp.utils.UUIDUtils;
 import lombok.AccessLevel;
@@ -27,7 +28,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.lang.NonNull;
@@ -153,7 +153,8 @@ public class UserService {
             int page, int size,
             @NonNull String sortBy
     ) {
-        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, sortBy));
+        // sort giảm dần
+        Pageable pageable = PaginationUtils.createPageable(page, size, sortBy, Sort.Direction.DESC);
 
         Page<UserSummaryResponse> dtoPage = userRepository.findAllSummaries(pageable);
 
